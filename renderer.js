@@ -1060,7 +1060,7 @@ window.addEventListener("DOMContentLoaded", () => {
           btn.type = 'button';
           btn.textContent = btnConfig.text;
           if (btnConfig.isDanger) {
-            btn.className = 'app-confirm-btn-danger';
+            btn.className = btnConfig.isPrimary ? 'app-confirm-btn-danger app-confirm-btn-primary' : 'app-confirm-btn-danger';
           } else if (btnConfig.isPrimary) {
             btn.className = 'app-confirm-btn-primary';
           } else if (btnConfig.isSecondary) {
@@ -1102,6 +1102,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let isProgrammaticEdit = false;
   let typingTimeout = null;
   let typingStartValue = null;
+  let lastDeletedFile = null;
 
   function computeSimpleDiff(oldStr, newStr) {
     let start = 0;
@@ -1283,6 +1284,36 @@ window.addEventListener("DOMContentLoaded", () => {
       historyModal.classList.remove('hidden');
       renderHistoryModal();
     } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      const activeEl = document.activeElement;
+      const isEditorFocused = activeEl === editor;
+      if (!isEditorFocused && lastDeletedFile) {
+        e.preventDefault();
+        try {
+          const itemsToRestore = lastDeletedFile.items || (lastDeletedFile.filePath ? [lastDeletedFile] : []);
+          let restoredCount = 0;
+          let lastRestoredPath = null;
+          for (const item of itemsToRestore) {
+            if (item.filePath) {
+              fs.writeFileSync(item.filePath, item.content || '', 'utf8');
+              restoredCount++;
+              lastRestoredPath = item.filePath;
+            }
+          }
+          if (restoredCount === 1 && lastRestoredPath) {
+            const restoredName = path.basename(lastRestoredPath);
+            showNotification(i18n.t('notif_item_restored', { name: restoredName }) || `"${restoredName}" ripristinato dal cestino`, 'success');
+            openFileInTab(lastRestoredPath);
+          } else if (restoredCount > 1) {
+            showNotification(i18n.t('notif_multiple_restored', { count: restoredCount }) || `${restoredCount} elementi ripristinati dal cestino`, 'success');
+            if (lastRestoredPath) openFileInTab(lastRestoredPath);
+          }
+          if (currentFolderPath) openFolder(currentFolderPath);
+          lastDeletedFile = null;
+        } catch (err) {
+          console.error('Error restoring file(s):', err);
+        }
+        return;
+      }
       // Linear undo
       if (actionHistory.length > 0) {
         e.preventDefault();
@@ -5245,6 +5276,16 @@ window.addEventListener("DOMContentLoaded", () => {
 
     renderTabs();
 
+    if (targetTab.filePath && fileTree) {
+      const normalPath = path.resolve(targetTab.filePath);
+      const items = fileTree.querySelectorAll('.tree-file');
+      items.forEach(el => {
+        if (el.dataset.path && path.resolve(el.dataset.path) === normalPath) {
+          selectExplorerItem(targetTab.filePath, el);
+        }
+      });
+    }
+
     const activeEl = document.querySelector(`.editor-tab[data-tab-id="${tabId}"]`);
     activeEl?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
   }
@@ -5525,33 +5566,126 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // ====== EXPLORER SELECTION, ACTIONS & CONTEXT MENU ======
+  let selectedExplorerPaths = [];
   let selectedExplorerPath = null;
   let selectedExplorerElement = null;
+  let lastExplorerAnchorElement = null;
   let isRenamingInExplorer = false;
 
   function clearExplorerSelection() {
-    if (selectedExplorerElement) {
-      selectedExplorerElement.classList.remove('selected');
+    if (fileTree) {
+      fileTree.querySelectorAll('.tree-file.selected').forEach(el => {
+        el.classList.remove('selected');
+      });
     }
+    selectedExplorerPaths = [];
     selectedExplorerPath = null;
     selectedExplorerElement = null;
   }
 
-  function selectExplorerItem(itemPath, element) {
-    if (selectedExplorerElement && selectedExplorerElement !== element) {
-      selectedExplorerElement.classList.remove('selected');
+  function getAllExplorerFileElements() {
+    if (!fileTree) return [];
+    const files = Array.from(fileTree.querySelectorAll('.tree-file:not(.tree-inline-input)'));
+    const visibleFiles = files.filter(el => el.offsetParent !== null);
+    return visibleFiles.length > 0 ? visibleFiles : files;
+  }
+
+  function updateExplorerSelectionUI() {
+    if (!fileTree) return;
+    const allFiles = getAllExplorerFileElements();
+    const pathSet = new Set(selectedExplorerPaths.map(p => path.resolve(p)));
+    allFiles.forEach(el => {
+      const elPath = el.dataset.path ? path.resolve(el.dataset.path) : null;
+      if (elPath && pathSet.has(elPath)) {
+        el.classList.add('selected');
+      } else {
+        el.classList.remove('selected');
+      }
+    });
+  }
+
+  function handleExplorerItemClick(itemPath, element, event) {
+    if (!itemPath || !element) return;
+    const normalPath = path.resolve(itemPath);
+    const isShift = event && event.shiftKey;
+    const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey);
+
+    if (isShift) {
+      if (typeof window !== 'undefined' && window.getSelection) {
+        try { window.getSelection().removeAllRanges(); } catch (_) {}
+      }
+      // Shift+Click: Range selection between anchor and clicked element
+      const allFiles = getAllExplorerFileElements();
+      let anchorIdx = lastExplorerAnchorElement ? allFiles.indexOf(lastExplorerAnchorElement) : -1;
+      if (anchorIdx === -1 && selectedExplorerElement) {
+        anchorIdx = allFiles.indexOf(selectedExplorerElement);
+      }
+      const targetIdx = allFiles.indexOf(element);
+
+      if (anchorIdx === -1) {
+        anchorIdx = 0;
+      }
+
+      const start = Math.min(anchorIdx, targetIdx);
+      const end = Math.max(anchorIdx, targetIdx);
+      const rangeElements = allFiles.slice(start, end + 1);
+
+      if (!isCtrlOrCmd) {
+        selectedExplorerPaths = rangeElements.map(el => el.dataset.path).filter(Boolean);
+      } else {
+        const newPaths = rangeElements.map(el => el.dataset.path).filter(Boolean);
+        const combined = new Set([...selectedExplorerPaths.map(p => path.resolve(p)), ...newPaths.map(p => path.resolve(p))]);
+        selectedExplorerPaths = Array.from(combined);
+      }
+
+      selectedExplorerPath = itemPath;
+      selectedExplorerElement = element;
+      updateExplorerSelectionUI();
+      openFileInTab(itemPath);
+
+    } else if (isCtrlOrCmd) {
+      // Ctrl+Click: Toggle clicked item in multi-selection
+      const index = selectedExplorerPaths.findIndex(p => path.resolve(p) === normalPath);
+      if (index >= 0) {
+        selectedExplorerPaths.splice(index, 1);
+        if (selectedExplorerPath && path.resolve(selectedExplorerPath) === normalPath) {
+          selectedExplorerPath = selectedExplorerPaths.length > 0 ? selectedExplorerPaths[selectedExplorerPaths.length - 1] : null;
+          selectedExplorerElement = selectedExplorerPath && fileTree ? (fileTree.querySelector(`.tree-file[data-path="${selectedExplorerPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`) || null) : null;
+        }
+      } else {
+        selectedExplorerPaths.push(itemPath);
+        selectedExplorerPath = itemPath;
+        selectedExplorerElement = element;
+        openFileInTab(itemPath);
+      }
+      lastExplorerAnchorElement = element;
+      updateExplorerSelectionUI();
+
+    } else {
+      // Normal click: Single select
+      selectedExplorerPaths = [itemPath];
+      selectedExplorerPath = itemPath;
+      selectedExplorerElement = element;
+      lastExplorerAnchorElement = element;
+      updateExplorerSelectionUI();
+      openFileInTab(itemPath);
     }
+
+    try {
+      element.focus();
+    } catch (_) {}
+  }
+
+  function selectExplorerItem(itemPath, element) {
+    if (!itemPath || !element) return;
+    selectedExplorerPaths = [itemPath];
     selectedExplorerPath = itemPath;
     selectedExplorerElement = element;
-    if (element) {
-      element.classList.add('selected');
-      if (element.tabIndex < 0) {
-        element.tabIndex = -1;
-      }
-      try {
-        element.focus();
-      } catch (_) {}
-    }
+    lastExplorerAnchorElement = element;
+    updateExplorerSelectionUI();
+    try {
+      element.focus();
+    } catch (_) {}
   }
 
   function showFileContextMenu(filePath, fileElement) {
@@ -5626,11 +5760,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
     menu.append(new MenuItem({ type: 'separator' }));
 
+    const count = selectedExplorerPaths.length;
+    const isMulti = count > 1 && selectedExplorerPaths.some(p => path.resolve(p) === path.resolve(filePath));
     menu.append(new MenuItem({
-      label: i18n.t('ctx_delete') || 'Move to Trash',
+      label: isMulti ? (i18n.t('ctx_delete_multiple', { count }) || `Move ${count} items to Trash`) : (i18n.t('ctx_delete') || 'Move to Trash'),
       accelerator: isDarwin ? 'Cmd+Backspace' : 'Delete',
       click: () => {
-        deleteExplorerFile(filePath);
+        deleteExplorerFiles(isMulti ? selectedExplorerPaths : [filePath]);
       }
     }));
 
@@ -5818,48 +5954,141 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  async function deleteExplorerFile(filePath) {
-    if (!filePath || !fs.existsSync(filePath)) return;
-    const fileName = path.basename(filePath);
+  async function deleteExplorerFiles(filePaths) {
+    if (!filePaths) return;
+    const pathList = (Array.isArray(filePaths) ? filePaths : [filePaths]).filter(Boolean);
+    if (pathList.length === 0) return;
 
-    const answer = await showCustomConfirmDialog({
-      type: 'warning',
-      icon: 'warning',
-      title: i18n.t('dialog_delete_title') || 'Move to Trash',
-      message: i18n.t('dialog_delete_confirm', { name: fileName }) || `Are you sure you want to move "${fileName}" to Trash?`,
-      buttons: [
-        { text: i18n.t('dialog_cancel') || 'Cancel', value: 1, isCancel: true },
-        { text: i18n.t('dialog_move_to_trash') || 'Move to Trash', value: 0, isDanger: true }
-      ]
-    });
-
-    if (answer !== 0) return;
-
-    try {
-      if (shell && typeof shell.trashItem === 'function') {
-        await shell.trashItem(filePath);
-      } else if (shell && typeof shell.moveItemToTrash === 'function') {
-        shell.moveItemToTrash(filePath);
-      } else {
-        fs.unlinkSync(filePath);
+    // Deduplicate normalized paths
+    const uniqueMap = new Map();
+    for (const fp of pathList) {
+      const norm = path.resolve(fp);
+      if (!uniqueMap.has(norm)) {
+        uniqueMap.set(norm, fp);
       }
-    } catch (err) {
-      dialog.showErrorBox(i18n.t('dialog_delete_title') || 'Error', err.message);
-      return;
+    }
+    const uniquePaths = Array.from(uniqueMap.values());
+    const count = uniquePaths.length;
+    if (count === 0) return;
+
+    // Read content before deleting to support Ctrl+Z restore
+    const itemsToRestore = [];
+    for (const fp of uniquePaths) {
+      let fileContent = '';
+      if (fs.existsSync(fp)) {
+        try {
+          fileContent = fs.readFileSync(fp, 'utf8');
+        } catch (_) {}
+      } else {
+        const matchingTab = (tabs || []).find(t => t.filePath && path.resolve(t.filePath) === path.resolve(fp));
+        if (matchingTab) {
+          fileContent = matchingTab.content;
+        }
+      }
+      itemsToRestore.push({ filePath: fp, content: fileContent });
     }
 
-    const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(filePath));
-    for (const t of openTabs) {
-      t.isDirty = false;
-      closeTab(t.id);
-    }
+    if (count === 1) {
+      const singlePath = uniquePaths[0];
+      const fileName = path.basename(singlePath);
+      const answer = await showCustomConfirmDialog({
+        type: 'warning',
+        icon: 'warning',
+        title: i18n.t('dialog_delete_title') || 'Move to Trash',
+        message: i18n.t('dialog_delete_confirm', { name: fileName }) || `Are you sure you want to move "${fileName}" to Trash?`,
+        buttons: [
+          { text: i18n.t('dialog_cancel') || 'Cancel', value: 1, isCancel: true },
+          { text: i18n.t('dialog_move_to_trash') || 'Move to Trash', value: 0, isDanger: true, isPrimary: true }
+        ]
+      });
 
-    clearExplorerSelection();
-    showNotification(i18n.t('notif_item_deleted', { name: fileName }) || `"${fileName}" moved to Trash`, 'info');
+      if (answer !== 0) return;
 
-    if (currentFolderPath) {
-      openFolder(currentFolderPath);
+      if (fs.existsSync(singlePath)) {
+        try {
+          if (shell && typeof shell.trashItem === 'function') {
+            await shell.trashItem(singlePath);
+          } else if (shell && typeof shell.moveItemToTrash === 'function') {
+            shell.moveItemToTrash(singlePath);
+          } else {
+            fs.unlinkSync(singlePath);
+          }
+        } catch (err) {
+          dialog.showErrorBox(i18n.t('dialog_delete_title') || 'Error', err.message);
+          return;
+        }
+      }
+
+      lastDeletedFile = {
+        items: itemsToRestore,
+        filePath: singlePath,
+        content: itemsToRestore[0]?.content || '',
+        timestamp: Date.now()
+      };
+
+      const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(singlePath));
+      for (const t of openTabs) {
+        t.isDirty = false;
+        closeTab(t.id);
+      }
+
+      clearExplorerSelection();
+      showNotification(i18n.t('notif_item_deleted', { name: fileName }) || `"${fileName}" moved to Trash`, 'info');
+
+      if (currentFolderPath) {
+        openFolder(currentFolderPath);
+      }
+    } else {
+      const answer = await showCustomConfirmDialog({
+        type: 'warning',
+        icon: 'warning',
+        title: i18n.t('dialog_delete_title') || 'Move to Trash',
+        message: i18n.t('dialog_delete_multiple_confirm', { count }) || `Are you sure you want to move ${count} items to Trash?`,
+        buttons: [
+          { text: i18n.t('dialog_cancel') || 'Cancel', value: 1, isCancel: true },
+          { text: i18n.t('dialog_move_to_trash') || 'Move to Trash', value: 0, isDanger: true, isPrimary: true }
+        ]
+      });
+
+      if (answer !== 0) return;
+
+      for (const fp of uniquePaths) {
+        if (fs.existsSync(fp)) {
+          try {
+            if (shell && typeof shell.trashItem === 'function') {
+              await shell.trashItem(fp);
+            } else if (shell && typeof shell.moveItemToTrash === 'function') {
+              shell.moveItemToTrash(fp);
+            } else {
+              fs.unlinkSync(fp);
+            }
+          } catch (err) {
+            console.error('Error trashing item:', fp, err);
+          }
+        }
+        const openTabs = tabs.filter(t => t.filePath && path.resolve(t.filePath) === path.resolve(fp));
+        for (const t of openTabs) {
+          t.isDirty = false;
+          closeTab(t.id);
+        }
+      }
+
+      lastDeletedFile = {
+        items: itemsToRestore,
+        timestamp: Date.now()
+      };
+
+      clearExplorerSelection();
+      showNotification(i18n.t('notif_multiple_deleted', { count }) || `${count} items moved to Trash`, 'info');
+
+      if (currentFolderPath) {
+        openFolder(currentFolderPath);
+      }
     }
+  }
+
+  function deleteExplorerFile(filePath) {
+    return deleteExplorerFiles(filePath ? [filePath] : []);
   }
 
   function isMarkdownFile(filePath) { return filePath.toLowerCase().endsWith('.md'); }
@@ -5951,18 +6180,27 @@ window.addEventListener("DOMContentLoaded", () => {
         fileElement.title = item;
         fileElement.dataset.path = itemPath;
         fileElement.tabIndex = -1;
+        const isSelected = (selectedExplorerPaths || []).some(p => path.resolve(p) === normalPath) || (selectedExplorerPath && path.resolve(selectedExplorerPath) === normalPath);
+        if (isSelected) {
+          fileElement.classList.add('selected');
+          if (selectedExplorerPath && path.resolve(selectedExplorerPath) === normalPath) {
+            selectedExplorerElement = fileElement;
+          }
+        }
         fileElement.innerHTML = `
           <span class="tree-file-icon">${FILE_SVG}</span>
           <span class="tree-label">${item}${isUnsaved ? ' *' : ''}</span>
         `;
         fileElement.addEventListener('click', (e) => {
-          clearExplorerSelection();
-          openFileInTab(itemPath);
+          handleExplorerItemClick(itemPath, fileElement, e);
         });
         fileElement.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          selectExplorerItem(itemPath, fileElement);
+          const alreadySelected = (selectedExplorerPaths || []).some(p => path.resolve(p) === normalPath);
+          if (!alreadySelected) {
+            selectExplorerItem(itemPath, fileElement);
+          }
           showFileContextMenu(itemPath, fileElement);
         });
         parentElement.appendChild(fileElement);
@@ -7072,7 +7310,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.key === 'Enter') {
       const appConfirmModal = document.getElementById('app-confirm-modal');
       if (appConfirmModal && !appConfirmModal.classList.contains('hidden')) {
-        const primaryBtn = appConfirmModal.querySelector('.app-confirm-btn-primary');
+        const primaryBtn = appConfirmModal.querySelector('.app-confirm-btn-primary, .app-confirm-btn-danger');
         if (primaryBtn) {
           e.preventDefault();
           primaryBtn.click();
@@ -7316,6 +7554,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Rename (Enter or F2)
     if ((e.key === 'Enter' || e.key === 'F2') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      if (selectedExplorerPaths && selectedExplorerPaths.length > 1) {
+        return;
+      }
       e.preventDefault();
       startInlineRename(selectedExplorerPath, selectedExplorerElement);
       return;
@@ -7325,11 +7566,16 @@ window.addEventListener("DOMContentLoaded", () => {
     const isDarwin = platform === 'darwin';
     const isDelete = isDarwin
       ? (e.metaKey && (e.key === 'Backspace' || e.key === 'Delete'))
-      : (!e.metaKey && !e.ctrlKey && !e.altKey && e.key === 'Delete');
+      : (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === 'Delete' || e.key === 'Del' || e.code === 'Delete'));
 
     if (isDelete) {
       e.preventDefault();
-      deleteExplorerFile(selectedExplorerPath);
+      const targets = (selectedExplorerPaths && selectedExplorerPaths.length > 0)
+        ? selectedExplorerPaths
+        : (selectedExplorerPath ? [selectedExplorerPath] : []);
+      if (targets.length > 0) {
+        deleteExplorerFiles(targets);
+      }
       return;
     }
   });

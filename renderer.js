@@ -1029,6 +1029,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function executeAction(actionName, fn) {
     if (typeof tabs !== 'undefined' && tabs.length === 0) return;
+    if (typeof stopTypewriterEffect === 'function') {
+      stopTypewriterEffect();
+    }
     if (typingStartValue !== null) {
       clearTimeout(typingTimeout);
       recordAction("Typing", typingStartValue, editor.value);
@@ -1038,6 +1041,9 @@ window.addEventListener("DOMContentLoaded", () => {
     isProgrammaticEdit = true;
     fn();
     isProgrammaticEdit = false;
+    if (typeof stopTypewriterEffect === 'function' && editor.value.length > 0) {
+      stopTypewriterEffect();
+    }
     if (editor.value !== oldVal) {
       recordAction(actionName, oldVal, editor.value);
     } else {
@@ -1875,6 +1881,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // ===== PREVIEW RENDER (con include) =====
   function updatePreview() {
     if (!editor || !preview) return;
+
+    if (editor.value.length > 0 && typeof isTypewriterActive !== 'undefined' && isTypewriterActive) {
+      if (typeof stopTypewriterEffect === 'function') stopTypewriterEffect();
+    }
 
     const rawOriginal = editor.value;
     let raw = preprocessCodeIncludes(rawOriginal);
@@ -5700,6 +5710,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function preserveScroll(fn) { const s = editor.scrollTop; fn(); editor.scrollTop = s; }
   function formatAsCode() {
+    if (typeof stopTypewriterEffect === 'function') stopTypewriterEffect();
     const start = editor.selectionStart; const end = editor.selectionEnd;
     if (start !== end) {
       const selected = editor.value.substring(start, end);
@@ -5709,6 +5720,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const block = "```\n\n```"; editor.value = editor.value.substring(0, start) + block + editor.value.substring(end);
       const pos = start + 4; editor.selectionStart = pos; editor.selectionEnd = pos;
     }
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
     updatePreview(); setDirty(true); updateEditorOverlay(); editor.focus();
   }
   function insertMarkdownLinkBtn() { insertMarkdownLink(); }
@@ -5809,6 +5821,15 @@ window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("dropdown-extra")?.classList.remove("open");
     document.getElementById("dropdown-options")?.classList.remove("open");
     btnTitle.classList.toggle("active");
+  });
+
+  // Qualsiasi interazione con i pulsanti di formattazione della toolbar o dei dropdown rimuove subito il placeholder typewriter
+  document.querySelectorAll('#toolbar button, .extra-item, .dropdown-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof stopTypewriterEffect === 'function') {
+        stopTypewriterEffect();
+      }
+    });
   });
 
   // ===== POP-UP MODAL IMPOSTAZIONI =====

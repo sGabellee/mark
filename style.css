@@ -1401,6 +1401,64 @@ body.dark {
   --explorer-border: rgba(255, 255, 255, 0.08);
 }
 
+html.theme-github,
+body.theme-github {
+  --editor-bg: #0d1117;
+  --preview-bg: #0d1117;
+  --fg: #e6edf3;
+  --code-bg: #161b22;
+  --explorer-bg: #010409;
+  --explorer-fg: #8b949e;
+  --explorer-hover: #161b22;
+  --explorer-active: #1f6feb;
+  --explorer-border: #30363d;
+}
+
+body.theme-github #titlebar {
+  background-color: #010409;
+  border-bottom: 1px solid #30363d;
+}
+
+body.theme-github #footer {
+  background-color: #010409;
+  border-top: 1px solid #30363d;
+}
+
+body.theme-github .tab-bar,
+body.theme-github #tabs-bar {
+  background-color: #010409;
+  border-bottom: 1px solid #30363d;
+}
+
+body.theme-github .editor-tab {
+  background-color: #010409;
+  color: #8b949e;
+  border-right: 1px solid #30363d;
+}
+
+body.theme-github .editor-tab.active {
+  background-color: #0d1117;
+  color: #e6edf3;
+}
+
+body.theme-github #preview pre {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+}
+
+body.theme-github #preview a {
+  color: #58a6ff;
+}
+
+body.theme-github #preview hr {
+  border-bottom-color: #30363d;
+}
+
+body.theme-github #preview table th,
+body.theme-github #preview table td {
+  border-color: #30363d;
+}
+
 .mermaid {
   margin: 1rem auto;
   max-width: 100%;
@@ -2852,8 +2910,8 @@ body.dark .settings-sidebar {
 }
 
 .settings-tabs {
-  min-width: 150px;
-  max-width: 180px;
+  min-width: 210px;
+  max-width: 260px;
 }
 
 .settings-tabs.settings-export-font-tabs {

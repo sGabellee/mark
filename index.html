@@ -4,8 +4,11 @@
 <head>
   <script>
     try {
-      if (localStorage.getItem('mark-theme') === 'dark') {
+      const savedTheme = localStorage.getItem('mark-theme');
+      if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
+      } else if (savedTheme === 'github') {
+        document.documentElement.classList.add('dark', 'theme-github');
       }
     } catch (e) {}
   </script>
@@ -206,8 +209,11 @@
                 <span class="titlebar-menu-shortcut">F11</span>
               </button>
               <button type="button" class="titlebar-menu-item" data-action="toggle-dark-mode">
-                <span data-i18n="menu_dark_mode">Dark Mode</span>
+                <span data-i18n="menu_dark_mode" id="titlebar-menu-dark-mode-text">Dark Mode</span>
                 <span class="titlebar-menu-shortcut">Ctrl+M</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="set-theme-github">
+                <span data-i18n="menu_github_theme">GitHub Theme</span>
               </button>
             </div>
           </div>
@@ -603,6 +609,7 @@
                 <div class="collab-tabs settings-tabs" id="theme-segmented">
                   <button type="button" class="collab-tab active" id="theme-btn-light" data-theme="light" data-i18n="theme_light">Light</button>
                   <button type="button" class="collab-tab" id="theme-btn-dark" data-theme="dark" data-i18n="theme_dark">Dark</button>
+                  <button type="button" class="collab-tab" id="theme-btn-github" data-theme="github" data-i18n="theme_github">GitHub</button>
                 </div>
               </div>
 

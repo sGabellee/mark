@@ -27,9 +27,13 @@ if (targetArg) {
     const stat = fs.statSync(absolutePath);
     if (stat.isDirectory()) {
       openFolderPath = absolutePath;
-    } else if (stat.isFile() && absolutePath.endsWith('.md')) {
+    } else if (stat.isFile()) {
       openFilePath = absolutePath;
+      openFolderPath = path.dirname(absolutePath);
     }
+  } else {
+    openFilePath = absolutePath;
+    openFolderPath = path.dirname(absolutePath);
   }
 }
 
@@ -46,22 +50,27 @@ if (!gotTheLock) {
       const absPath = path.resolve(workingDirectory, target);
       if (fs.existsSync(absPath)) {
         const stat = fs.statSync(absPath);
-        if (stat.isFile() && absPath.endsWith('.md')) {
-          targetFile = absPath;
-        } else if (stat.isDirectory()) {
+        if (stat.isDirectory()) {
           targetFolder = absPath;
+        } else if (stat.isFile()) {
+          targetFile = absPath;
+          targetFolder = path.dirname(absPath);
         }
+      } else {
+        targetFile = absPath;
+        targetFolder = path.dirname(absPath);
       }
     }
 
     if (win && !win.isDestroyed()) {
       if (win.isMinimized()) win.restore();
       win.focus();
-      if (targetFile) {
-        const content = fs.readFileSync(targetFile, 'utf8');
-        win.webContents.send('load-md', targetFile, content);
-      } else if (targetFolder) {
+      if (targetFolder) {
         win.webContents.send('open-folder', targetFolder);
+      }
+      if (targetFile) {
+        const content = fs.existsSync(targetFile) ? fs.readFileSync(targetFile, 'utf8') : '';
+        win.webContents.send('load-md', targetFile, content);
       }
     } else {
       if (targetFile) openFilePath = targetFile;
@@ -94,6 +103,15 @@ ipcMain.on('window-close', () => {
 });
 ipcMain.on('window-close-confirmed', () => {
   if (win && !win.isDestroyed()) win.destroy();
+});
+ipcMain.on('update-theme-menu-label', (_event, isDark) => {
+  const menu = Menu.getApplicationMenu();
+  if (menu) {
+    const item = menu.getMenuItemById('menu-item-theme-toggle');
+    if (item) {
+      item.label = isDark ? (i18n.t("menu_light_mode") || "Light Mode") : (i18n.t("menu_dark_mode") || "Dark Mode");
+    }
+  }
 });
 ipcMain.on('get-platform', (event) => {
   event.returnValue = process.platform;
@@ -399,10 +417,17 @@ function buildApplicationMenu() {
         },
         { type: "separator" },
         {
+          id: 'menu-item-theme-toggle',
           label: i18n.t("menu_dark_mode"),
           accelerator: "CmdOrCtrl+M",
           click: () => {
             win.webContents.send("toggle-theme");
+          }
+        },
+        {
+          label: i18n.t("menu_github_theme"),
+          click: () => {
+            win.webContents.send("set-theme-github");
           }
         }
       ]
@@ -530,11 +555,12 @@ app.whenReady().then(() => {
   createWindow();
 
   win.webContents.once('did-finish-load', () => {
-    if (openFilePath && fs.existsSync(openFilePath)) {
-      const content = fs.readFileSync(openFilePath, 'utf8');
-      win.webContents.send('load-md', openFilePath, content);
-    } else if (openFolderPath && fs.existsSync(openFolderPath)) {
+    if (openFolderPath && fs.existsSync(openFolderPath)) {
       win.webContents.send('open-folder', openFolderPath);
+    }
+    if (openFilePath) {
+      const content = fs.existsSync(openFilePath) ? fs.readFileSync(openFilePath, 'utf8') : '';
+      win.webContents.send('load-md', openFilePath, content);
     }
   });
 

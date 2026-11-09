@@ -328,6 +328,9 @@ const translations = {
     menu_zoom_out: "Zoom Out",
     menu_zoom_reset: "Reset Zoom",
     menu_dark_mode: "Dark Mode",
+    menu_light_mode: "Light Mode",
+    menu_github_theme: "GitHub Theme",
+    theme_github: "GitHub",
 
     // Templates
     menu_save_as_template: "Save as Template...",
@@ -691,6 +694,9 @@ const translations = {
     menu_zoom_out: "Riduci zoom",
     menu_zoom_reset: "Reimposta zoom",
     menu_dark_mode: "Modalità scura",
+    menu_light_mode: "Modalità chiara",
+    menu_github_theme: "Tema GitHub",
+    theme_github: "GitHub",
 
     // Templates
     menu_save_as_template: "Salva come template...",

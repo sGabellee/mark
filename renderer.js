@@ -4,9 +4,14 @@ const savedTheme = localStorage.getItem('mark-theme') || 'light';
 if (savedTheme === 'dark') {
   document.documentElement.classList.add('dark');
   document.body.classList.add('dark');
+  document.documentElement.classList.remove('theme-github');
+  document.body.classList.remove('theme-github');
+} else if (savedTheme === 'github') {
+  document.documentElement.classList.add('dark', 'theme-github');
+  document.body.classList.add('dark', 'theme-github');
 } else {
-  document.documentElement.classList.remove('dark');
-  document.body.classList.remove('dark');
+  document.documentElement.classList.remove('dark', 'theme-github');
+  document.body.classList.remove('dark', 'theme-github');
 }
 
 // Lingua predefinita: inglese come richiesto
@@ -2762,6 +2767,46 @@ window.addEventListener("DOMContentLoaded", () => {
     const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', '`': '`' };
     const closingChars = [')', ']', '}', '"', '`'];
 
+    // 0. Auto-surround su testo selezionato (stile VS Code: non cancella, ma racchiude la selezione)
+    const selStart = editor.selectionStart;
+    const selEnd = editor.selectionEnd;
+    if (selStart !== selEnd && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const surroundMap = {
+        '*': { prefix: '*', suffix: '*' },
+        '_': { prefix: '_', suffix: '_' },
+        '~': { prefix: '~', suffix: '~' },
+        '`': { prefix: '`', suffix: '`' },
+        '"': { prefix: '"', suffix: '"' },
+        "'": { prefix: "'", suffix: "'" },
+        '(': { prefix: '(', suffix: ')' },
+        ')': { prefix: '(', suffix: ')' },
+        '[': { prefix: '[', suffix: ']' },
+        ']': { prefix: '[', suffix: ']' },
+        '{': { prefix: '{', suffix: '}' },
+        '}': { prefix: '{', suffix: '}' },
+        '<': { prefix: '<', suffix: '>' },
+        '>': { prefix: '<', suffix: '>' },
+        '$': { prefix: '$', suffix: '$' }
+      };
+
+      if (surroundMap[e.key]) {
+        e.preventDefault();
+        const { prefix, suffix } = surroundMap[e.key];
+        const selectedText = editor.value.substring(selStart, selEnd);
+        const left = editor.value.substring(0, selStart);
+        const right = editor.value.substring(selEnd);
+        executeAction("Surround with " + e.key, () => {
+          editor.value = left + prefix + selectedText + suffix + right;
+          editor.selectionStart = selStart + prefix.length;
+          editor.selectionEnd = selEnd + prefix.length;
+          updatePreview();
+          setDirty(true);
+          updateEditorOverlay();
+        });
+        return;
+      }
+    }
+
     // 1. Overtyping: se premo chiusura e sono davanti a quella chiusura, avanzo
     if (closingChars.includes(e.key)) {
       const start = editor.selectionStart;
@@ -3959,8 +4004,12 @@ window.addEventListener("DOMContentLoaded", () => {
   ipcRenderer.on("toggle-editor", () => toggleViewMode("solo-preview"));
   ipcRenderer.on("insert-link", () => { if (typeof insertMarkdownLink === 'function') insertMarkdownLink(); });
   ipcRenderer.on("toggle-theme", () => {
-    const isDark = document.body.classList.contains("dark");
-    applyTheme(isDark ? "light" : "dark");
+    const currentTheme = localStorage.getItem("mark-theme") || "light";
+    const nextTheme = (currentTheme === "dark" || currentTheme === "github") ? "light" : "dark";
+    applyTheme(nextTheme);
+  });
+  ipcRenderer.on("set-theme-github", () => {
+    applyTheme("github");
   });
 
   // ===== Inserimento immagini via menu =====
@@ -5244,11 +5293,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
     let fileContent = content;
     if (fileContent === null) {
-      try {
-        fileContent = fs.readFileSync(normalPath, 'utf8');
-      } catch (err) {
-        dialog.showErrorBox(i18n.t('notif_error', { msg: err.message }) || 'Error', err.message);
-        return null;
+      if (fs.existsSync(normalPath)) {
+        try {
+          fileContent = fs.readFileSync(normalPath, 'utf8');
+        } catch (err) {
+          dialog.showErrorBox(i18n.t('notif_error', { msg: err.message }) || 'Error', err.message);
+          return null;
+        }
+      } else {
+        fileContent = '';
       }
     }
 
@@ -6388,21 +6441,46 @@ window.addEventListener("DOMContentLoaded", () => {
   btnCloseSettings && btnCloseSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
   modalOverlay && modalOverlay.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-  // Gestione Tema (Chiaro / Scuro) con selettore a tab
+  const themeBtnGithub = document.getElementById("theme-btn-github");
+
+  // Gestione Tema (Chiaro / Scuro / GitHub) con selettore a tab
   function applyTheme(theme) {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
       document.body.classList.add("dark");
+      document.documentElement.classList.remove("theme-github");
+      document.body.classList.remove("theme-github");
+    } else if (theme === "github") {
+      document.documentElement.classList.add("dark", "theme-github");
+      document.body.classList.add("dark", "theme-github");
     } else {
-      document.documentElement.classList.remove("dark");
-      document.body.classList.remove("dark");
+      document.documentElement.classList.remove("dark", "theme-github");
+      document.body.classList.remove("dark", "theme-github");
     }
     localStorage.setItem("mark-theme", theme);
 
     if (themeBtnLight && themeBtnDark) {
       themeBtnLight.classList.toggle("active", theme === "light");
       themeBtnDark.classList.toggle("active", theme === "dark");
+      if (themeBtnGithub) {
+        themeBtnGithub.classList.toggle("active", theme === "github");
+      }
     }
+
+    // Aggiorna etichetta dinamica del tasto dark / light mode (Point 5)
+    const isCurrentlyDark = theme === "dark" || theme === "github";
+    const darkToggleBtn = document.querySelector('[data-action="toggle-dark-mode"]');
+    if (darkToggleBtn) {
+      const labelSpan = darkToggleBtn.querySelector('span[data-i18n]') || darkToggleBtn.querySelector('span:first-child');
+      if (labelSpan) {
+        const key = isCurrentlyDark ? 'menu_light_mode' : 'menu_dark_mode';
+        labelSpan.setAttribute('data-i18n', key);
+        labelSpan.textContent = (typeof i18n !== 'undefined' ? i18n.t(key) : null) || (isCurrentlyDark ? 'Light Mode' : 'Dark Mode');
+      }
+    }
+    try {
+      ipcRenderer.send('update-theme-menu-label', isCurrentlyDark);
+    } catch (e) {}
   }
 
   function applyLanguage(lang) {
@@ -6456,6 +6534,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   themeBtnLight?.addEventListener("click", () => applyTheme("light"));
   themeBtnDark?.addEventListener("click", () => applyTheme("dark"));
+  themeBtnGithub?.addEventListener("click", () => applyTheme("github"));
   langBtnEn?.addEventListener("click", () => applyLanguage("en"));
   langBtnIt?.addEventListener("click", () => applyLanguage("it"));
 
@@ -7459,8 +7538,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
           case 'toggle-dark-mode':
             if (typeof applyTheme === 'function') {
-              const isDark = document.body.classList.contains("dark");
-              applyTheme(isDark ? "light" : "dark");
+              const currentTheme = localStorage.getItem("mark-theme") || "light";
+              const nextTheme = (currentTheme === "dark" || currentTheme === "github") ? "light" : "dark";
+              applyTheme(nextTheme);
+            }
+            break;
+
+          case 'set-theme-github':
+            if (typeof applyTheme === 'function') {
+              applyTheme("github");
             }
             break;
         }
@@ -7966,6 +8052,9 @@ window.addEventListener("DOMContentLoaded", () => {
         createNewTab(template.suggestedFilename || template.title, template.content);
       }
       showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
+      if (templateId === 'readme-github' && typeof applyTheme === 'function') {
+        applyTheme('github');
+      }
     } else {
       const choice = await showCustomConfirmDialog({
         title: i18n.t('template_gallery_title') || 'Template',
@@ -7981,6 +8070,9 @@ window.addEventListener("DOMContentLoaded", () => {
       if (choice === 'new-tab') {
         createNewTab(template.suggestedFilename || template.title, template.content);
         showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
+        if (templateId === 'readme-github' && typeof applyTheme === 'function') {
+          applyTheme('github');
+        }
       } else if (choice === 'replace') {
         if (editor) {
           isProgrammaticEdit = true;
@@ -8004,6 +8096,9 @@ window.addEventListener("DOMContentLoaded", () => {
           editor.setSelectionRange(0, 0);
         }
         showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
+        if (templateId === 'readme-github' && typeof applyTheme === 'function') {
+          applyTheme('github');
+        }
       }
     }
   }

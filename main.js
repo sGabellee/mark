@@ -241,6 +241,12 @@ function buildApplicationMenu() {
           }
         },
         {
+          label: i18n.t("menu_save_as_template"),
+          click: () => {
+            win.webContents.send("save-as-template");
+          }
+        },
+        {
           label: i18n.t("menu_export_pdf"),
           accelerator: "CmdOrCtrl+Alt+E",
           click: () => {
@@ -292,6 +298,13 @@ function buildApplicationMenu() {
           label: i18n.t("menu_select_all"),
           accelerator: "CmdOrCtrl+A",
           role: "selectAll"
+        },
+        { type: "separator" },
+        {
+          label: i18n.t("menu_choose_template"),
+          click: () => {
+            win.webContents.send("choose-template");
+          }
         },
         {
           label: i18n.t("menu_find"),

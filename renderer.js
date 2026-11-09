@@ -1382,29 +1382,38 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  newFileBtn && newFileBtn.addEventListener("click", () => {
+  function promptCreateFileWithTemplate(templateId) {
     if (!confirmLeaveCollabIfActive('action_create_new')) {
       return;
     }
 
+    let template = null;
+    if (templateId && templateId !== 'blank' && window.MarkTemplates) {
+      template = window.MarkTemplates.getTemplateById(templateId);
+    }
+    const defaultContent = template ? template.content : '';
+    const suggestedName = template ? (template.suggestedFilename || (template.title.toLowerCase().replace(/[^a-z0-9_-]/g, '-') + '.md')) : 'nuovo-file.md';
+
     if (!currentFolderPath) {
-      if (typeof createNewFile === 'function') createNewFile();
+      if (typeof createNewTab === 'function') {
+        createNewTab(template ? (template.suggestedFilename || template.title) : null, defaultContent);
+      }
       return;
     }
 
-    // Creazione del campo input inline
+    // Creazione del campo input inline nell'albero file
     const inputContainer = document.createElement('div');
     inputContainer.className = 'tree-item tree-file';
     inputContainer.innerHTML = `<span class="tree-file-icon">${FILE_SVG}</span>`;
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'nuovo-file.md';
+    input.placeholder = suggestedName;
+    input.value = suggestedName;
     input.className = 'tree-inline-input';
 
     inputContainer.appendChild(input);
 
-    // Posiziona l'input in cima alla lista
     if (fileTree.firstChild) {
       fileTree.insertBefore(inputContainer, fileTree.firstChild);
     } else {
@@ -1412,6 +1421,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     input.focus();
+    input.select();
 
     let isHandled = false;
 
@@ -1419,36 +1429,75 @@ window.addEventListener("DOMContentLoaded", () => {
       if (isHandled) return;
       isHandled = true;
 
-      const filename = input.value.trim();
+      const rawVal = input.value.trim();
+      const filename = rawVal || suggestedName;
       if (filename) {
         const finalName = filename.endsWith('.md') ? filename : filename + '.md';
         const fullPath = path.join(currentFolderPath, finalName);
 
         if (!fs.existsSync(fullPath)) {
-          fs.writeFileSync(fullPath, '', 'utf8');
+          fs.writeFileSync(fullPath, defaultContent, 'utf8');
           if (typeof openFileInTab === 'function') {
-            openFileInTab(fullPath, '');
+            openFileInTab(fullPath, defaultContent);
           }
         } else {
           dialog.showErrorBox('Errore', 'Un file con questo nome esiste già.');
         }
       }
 
-      // Ricarica la vista della cartella
       openFolder(currentFolderPath);
     };
 
-    // Conferma col tasto Invio, annulla con Esc
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleInputSubmit();
       if (e.key === 'Escape') {
         isHandled = true;
+        inputContainer.remove();
         openFolder(currentFolderPath);
       }
     });
 
-    // Se l'utente clicca fuori dall'input, il file viene creato
     input.addEventListener('blur', handleInputSubmit);
+  }
+
+  function toggleNewFilePopup(forceState) {
+    const popup = document.getElementById('new-file-popup');
+    if (!popup) return;
+    const isHidden = popup.classList.contains('hidden');
+    const shouldOpen = forceState !== undefined ? forceState : isHidden;
+
+    if (shouldOpen) {
+      const customSection = document.getElementById('new-file-popup-custom-section');
+      const customList = document.getElementById('new-file-popup-custom-list');
+      if (customSection && customList && window.MarkTemplates) {
+        const customs = window.MarkTemplates.getCustomTemplates();
+        if (customs.length > 0) {
+          customList.innerHTML = customs.slice(0, 5).map(t => `
+            <button type="button" class="new-file-popup-item" data-template-id="${escapeHtml(t.id)}">
+              <span class="new-file-popup-icon">${t.icon || '⭐'}</span>
+              <div class="new-file-popup-text">
+                <span class="new-file-popup-title">${escapeHtml(t.title)}</span>
+                <span class="new-file-popup-desc">${escapeHtml(t.description || t.categoryLabel || '')}</span>
+              </div>
+            </button>
+          `).join('');
+          customSection.classList.remove('hidden');
+        } else {
+          customSection.classList.add('hidden');
+        }
+      }
+      popup.classList.remove('hidden');
+    } else {
+      popup.classList.add('hidden');
+    }
+  }
+
+  newFileBtn && newFileBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!confirmLeaveCollabIfActive('action_create_new')) {
+      return;
+    }
+    toggleNewFilePopup();
   });
 
   let autosaveInterval = null;
@@ -3750,6 +3799,12 @@ window.addEventListener("DOMContentLoaded", () => {
   ipcRenderer.on("new-file", () => createNewFile());
   ipcRenderer.on("open-folder", (event, folderPath) => openFolder(folderPath));
   ipcRenderer.on("trigger-save", () => saveCurrentFile());
+  ipcRenderer.on("save-as-template", () => {
+    if (typeof openSaveTemplateModal === 'function') openSaveTemplateModal();
+  });
+  ipcRenderer.on("choose-template", () => {
+    if (typeof openTemplateGallery === 'function') openTemplateGallery();
+  });
   ipcRenderer.on("close-active-tab", () => {
     if (activeTabId && typeof closeTab === 'function') {
       closeTab(activeTabId);
@@ -6743,6 +6798,28 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const templateGalleryModal = document.getElementById('template-gallery-modal');
+      if (templateGalleryModal && !templateGalleryModal.classList.contains('hidden')) {
+        templateGalleryModal.classList.add('hidden');
+        if (typeof closeTemplatePreview === 'function') closeTemplatePreview();
+        e.preventDefault();
+        return;
+      }
+
+      const saveTemplateModal = document.getElementById('save-template-modal');
+      if (saveTemplateModal && !saveTemplateModal.classList.contains('hidden')) {
+        saveTemplateModal.classList.add('hidden');
+        e.preventDefault();
+        return;
+      }
+
+      const newFilePopup = document.getElementById('new-file-popup');
+      if (newFilePopup && !newFilePopup.classList.contains('hidden')) {
+        newFilePopup.classList.add('hidden');
+        e.preventDefault();
+        return;
+      }
+
       const settingsModal = document.getElementById('settings-modal');
       
       // Se il modal delle impostazioni è aperto, lo chiude
@@ -7073,6 +7150,10 @@ window.addEventListener("DOMContentLoaded", () => {
             if (typeof saveCurrentFile === 'function') saveCurrentFile();
             break;
 
+          case 'save-as-template':
+            if (typeof openSaveTemplateModal === 'function') openSaveTemplateModal();
+            break;
+
           case 'close-tab':
             if (activeTabId && typeof closeTab === 'function') closeTab(activeTabId);
             break;
@@ -7137,6 +7218,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
           case 'select-all':
             if (editor) { editor.focus(); document.execCommand('selectAll'); }
+            break;
+
+          case 'choose-template':
+            if (typeof openTemplateGallery === 'function') openTemplateGallery();
             break;
 
           case 'find':
@@ -7217,6 +7302,562 @@ window.addEventListener("DOMContentLoaded", () => {
 
     updateTitlebarTitle();
   }
+
+  // =========================================================
+  // TEMPLATE SYSTEM (OVERLEAF STYLE) & CUSTOM TEMPLATES
+  // =========================================================
+  let currentTemplateCategory = 'all';
+  let currentTemplateSearch = '';
+  let activePreviewedTemplateId = null;
+  let currentPreviewTab = 'rendered';
+
+  const templateGalleryModal = document.getElementById('template-gallery-modal');
+  const templateGalleryOverlay = document.getElementById('template-gallery-overlay');
+  const btnCloseTemplateGallery = document.getElementById('btn-close-template-gallery');
+  const templateSearchInput = document.getElementById('template-search-input');
+  const templateSearchClear = document.getElementById('template-search-clear');
+  const btnGallerySaveCurrent = document.getElementById('btn-gallery-save-current');
+  const templateNavBtns = document.querySelectorAll('.template-nav-btn');
+  const templateCardsGrid = document.getElementById('template-cards-grid');
+  const templateCurrentCategoryTitle = document.getElementById('template-current-category-title');
+  const templateVisibleCount = document.getElementById('template-visible-count');
+
+  // Preview Drawer DOM
+  const templatePreviewDrawer = document.getElementById('template-preview-drawer');
+  const btnCloseTemplatePreview = document.getElementById('btn-close-template-preview');
+  const btnPreviewRendered = document.getElementById('btn-preview-rendered');
+  const btnPreviewSource = document.getElementById('btn-preview-source');
+  const btnUsePreviewedTemplate = document.getElementById('btn-use-previewed-template');
+  const previewRenderedBody = document.getElementById('preview-rendered-body');
+  const previewSourceBody = document.getElementById('preview-source-body');
+  const previewCategoryPill = document.getElementById('preview-category-pill');
+  const previewTemplateTitle = document.getElementById('preview-template-title');
+  const previewTemplateDesc = document.getElementById('preview-template-desc');
+
+  // Save Template Modal DOM
+  const saveTemplateModal = document.getElementById('save-template-modal');
+  const saveTemplateOverlay = document.getElementById('save-template-overlay');
+  const btnCloseSaveTemplate = document.getElementById('btn-close-save-template');
+  const btnCancelSaveTemplate = document.getElementById('btn-cancel-save-template');
+  const btnConfirmSaveTemplate = document.getElementById('btn-confirm-save-template');
+  const saveTemplateTitleInput = document.getElementById('save-template-title');
+  const saveTemplateCategorySelect = document.getElementById('save-template-category');
+  const saveTemplateDescInput = document.getElementById('save-template-desc');
+
+  // Explorer New File Popup DOM
+  const newFilePopup = document.getElementById('new-file-popup');
+  const btnCloseNewFilePopup = document.getElementById('btn-close-new-file-popup');
+  const btnPopupBrowseAll = document.getElementById('btn-popup-browse-all');
+
+  function openTemplateGallery(category = 'all') {
+    if (!templateGalleryModal) return;
+    currentTemplateCategory = category || 'all';
+    currentTemplateSearch = '';
+    if (templateSearchInput) templateSearchInput.value = '';
+    if (templateSearchClear) templateSearchClear.classList.add('hidden');
+
+    switchGalleryCategory(currentTemplateCategory);
+    templateGalleryModal.classList.remove('hidden');
+    closeTemplatePreview();
+    renderTemplateCards();
+    if (templateSearchInput) {
+      setTimeout(() => templateSearchInput.focus(), 100);
+    }
+  }
+
+  function closeTemplateGallery() {
+    if (!templateGalleryModal) return;
+    templateGalleryModal.classList.add('hidden');
+    closeTemplatePreview();
+  }
+
+  function openSaveTemplateModal() {
+    if (!saveTemplateModal) return;
+    const content = editor ? editor.value : '';
+    if (!content || !content.trim()) {
+      showNotification(i18n.t('editor_placeholder') || 'Documento vuoto: inserisci del testo prima di salvarlo come template', 'warning');
+      return;
+    }
+
+    const currentTab = tabs.find(t => t.id === activeTabId);
+    let initialTitle = '';
+    if (currentTab && currentTab.title) {
+      initialTitle = currentTab.title.replace(/\.md$/i, '');
+      if (initialTitle.startsWith(i18n.t('untitled_file') || 'untitled')) {
+        initialTitle = 'Il mio template';
+      }
+    }
+
+    if (saveTemplateTitleInput) {
+      saveTemplateTitleInput.value = initialTitle;
+    }
+    if (saveTemplateDescInput) {
+      saveTemplateDescInput.value = '';
+    }
+    saveTemplateModal.classList.remove('hidden');
+    if (saveTemplateTitleInput) {
+      setTimeout(() => {
+        saveTemplateTitleInput.focus();
+        saveTemplateTitleInput.select();
+      }, 80);
+    }
+  }
+
+  function closeSaveTemplateModal() {
+    if (!saveTemplateModal) return;
+    saveTemplateModal.classList.add('hidden');
+  }
+
+  function switchGalleryCategory(catName) {
+    currentTemplateCategory = catName;
+    templateNavBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.category === catName);
+    });
+    const labelMap = {
+      all: i18n.t('template_all') || 'Tutti i template',
+      official: i18n.t('template_official') || 'Predefiniti',
+      custom: i18n.t('template_my_templates') || 'I miei template',
+      github: 'GitHub & Software',
+      academic: i18n.t('template_cat_academic') || 'Università & Report',
+      notes: i18n.t('template_cat_notes') || 'Appunti & Studio'
+    };
+    if (templateCurrentCategoryTitle) {
+      templateCurrentCategoryTitle.textContent = labelMap[catName] || catName;
+    }
+    renderTemplateCards();
+  }
+
+  function renderTemplateCards() {
+    if (!templateCardsGrid || !window.MarkTemplates) return;
+
+    const allTemplates = window.MarkTemplates.getAllTemplates();
+    const officialTemplates = window.MarkTemplates.DEFAULT_TEMPLATES;
+    const customTemplates = window.MarkTemplates.getCustomTemplates();
+
+    // Aggiorna badge numerici contatori
+    const countAllEl = document.getElementById('count-all');
+    const countOfficialEl = document.getElementById('count-official');
+    const countCustomEl = document.getElementById('count-custom');
+    if (countAllEl) countAllEl.textContent = allTemplates.length;
+    if (countOfficialEl) countOfficialEl.textContent = officialTemplates.length;
+    if (countCustomEl) countCustomEl.textContent = customTemplates.length;
+
+    // Filtra template in base a categoria
+    let filtered = allTemplates;
+    if (currentTemplateCategory === 'official') {
+      filtered = officialTemplates;
+    } else if (currentTemplateCategory === 'custom') {
+      filtered = customTemplates;
+    } else if (currentTemplateCategory !== 'all') {
+      filtered = allTemplates.filter(t => t.category === currentTemplateCategory);
+    }
+
+    // Filtra template in base alla ricerca
+    if (currentTemplateSearch && currentTemplateSearch.trim()) {
+      const q = currentTemplateSearch.toLowerCase().trim();
+      filtered = filtered.filter(t => {
+        return (t.title && t.title.toLowerCase().includes(q)) ||
+          (t.description && t.description.toLowerCase().includes(q)) ||
+          (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q)) ||
+          (t.category && t.category.toLowerCase().includes(q));
+      });
+    }
+
+    if (templateVisibleCount) {
+      templateVisibleCount.textContent = `${filtered.length} template ${filtered.length === 1 ? 'disponibile' : 'disponibili'}`;
+    }
+
+    if (filtered.length === 0) {
+      templateCardsGrid.innerHTML = `
+        <div class="template-cards-empty">
+          <div class="template-cards-empty-icon">🔍</div>
+          <div>${i18n.t('template_no_results') || 'Nessun template trovato'}</div>
+        </div>
+      `;
+      return;
+    }
+
+    templateCardsGrid.innerHTML = filtered.map(t => {
+      const isCustom = !!t.isCustom;
+      const badgeText = isCustom ? (i18n.t('template_my_templates') || 'Mio Template') : (i18n.t('template_official') || 'Ufficiale');
+      const badgeClass = isCustom ? 'custom' : 'official';
+
+      return `
+        <div class="template-card" data-template-id="${escapeHtml(t.id)}">
+          <div class="template-card-top">
+            <div class="template-card-icon-badge">${t.icon || '📄'}</div>
+            <div class="template-card-headings">
+              <h4 class="template-card-title">${escapeHtml(t.title)}</h4>
+              <div class="template-card-pills">
+                <span class="template-badge-pill ${badgeClass}">${escapeHtml(badgeText)}</span>
+                <span class="template-category-pill">${escapeHtml(t.categoryLabel || t.category || '')}</span>
+              </div>
+            </div>
+          </div>
+          <div class="template-card-body">
+            <p class="template-card-description">${escapeHtml(t.description || '')}</p>
+          </div>
+          <div class="template-card-footer">
+            <button type="button" class="template-card-btn-use" data-action="use-template" data-template-id="${escapeHtml(t.id)}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>${i18n.t('template_use') || 'Usa template'}</span>
+            </button>
+            <button type="button" class="template-card-btn-preview" data-action="preview-template" data-template-id="${escapeHtml(t.id)}">
+              <span>${i18n.t('template_preview') || 'Anteprima'}</span>
+            </button>
+            ${isCustom ? `
+            <button type="button" class="template-card-btn-delete" data-action="delete-template" data-template-id="${escapeHtml(t.id)}" title="${i18n.t('template_delete') || 'Elimina'}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderMarkdownInto(element, markdownText) {
+    if (typeof marked !== 'undefined') {
+      let raw = markdownText;
+      if (typeof processMath === 'function') raw = processMath(raw);
+      let html = marked.parse(raw);
+      element.innerHTML = html;
+      if (typeof processCalloutAlerts === 'function') processCalloutAlerts(element);
+      if (typeof renderMathInElement === 'function') {
+        try {
+          renderMathInElement(element, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false,
+            output: 'html',
+            trust: true
+          });
+        } catch (_) {}
+      }
+      if (typeof hljs !== 'undefined') {
+        element.querySelectorAll('pre code').forEach((block) => {
+          try { hljs.highlightElement(block); } catch (_) {}
+        });
+      }
+    } else {
+      element.textContent = markdownText;
+    }
+  }
+
+  function openTemplatePreview(templateId) {
+    if (!window.MarkTemplates || !templatePreviewDrawer) return;
+    const template = window.MarkTemplates.getTemplateById(templateId);
+    if (!template) return;
+
+    activePreviewedTemplateId = templateId;
+    if (previewTemplateTitle) previewTemplateTitle.textContent = template.title;
+    if (previewCategoryPill) previewCategoryPill.textContent = template.categoryLabel || template.category;
+    if (previewTemplateDesc) previewTemplateDesc.textContent = template.description;
+
+    if (previewRenderedBody) {
+      renderMarkdownInto(previewRenderedBody, template.content);
+    }
+    if (previewSourceBody) {
+      previewSourceBody.value = template.content;
+    }
+
+    setPreviewDrawerTab('rendered');
+    templatePreviewDrawer.classList.remove('hidden');
+  }
+
+  function closeTemplatePreview() {
+    activePreviewedTemplateId = null;
+    if (templatePreviewDrawer) {
+      templatePreviewDrawer.classList.add('hidden');
+    }
+  }
+
+  function setPreviewDrawerTab(tab) {
+    currentPreviewTab = tab;
+    if (btnPreviewRendered) btnPreviewRendered.classList.toggle('active', tab === 'rendered');
+    if (btnPreviewSource) btnPreviewSource.classList.toggle('active', tab === 'source');
+    if (previewRenderedBody) previewRenderedBody.classList.toggle('hidden', tab !== 'rendered');
+    if (previewSourceBody) previewSourceBody.classList.toggle('hidden', tab !== 'source');
+  }
+
+  function applyTemplate(templateId) {
+    if (!window.MarkTemplates) return;
+    const template = window.MarkTemplates.getTemplateById(templateId);
+    if (!template) return;
+
+    closeTemplateGallery();
+
+    const currentTab = tabs.find(t => t.id === activeTabId);
+    const currentContent = editor ? editor.value : '';
+    const isCurrentEmpty = !currentContent || currentContent.trim() === '';
+
+    if (isCurrentEmpty) {
+      if (editor) {
+        isProgrammaticEdit = true;
+        editor.value = template.content;
+        lastKnownEditorValue = template.content;
+        isProgrammaticEdit = false;
+
+        if (currentTab) {
+          currentTab.content = template.content;
+          currentTab.isDirty = true;
+          currentTab.lastKnownEditorValue = template.content;
+          if (!currentTab.filePath && currentTab.title && currentTab.title.startsWith(i18n.t('untitled_file') || 'untitled')) {
+            currentTab.title = template.suggestedFilename || (template.title + '.md');
+          }
+        }
+        isDirty = true;
+        updateTabDirtyIndicator(activeTabId, true);
+        renderTabs();
+        updatePreview();
+        updateWordCount();
+        updateEditorOverlay();
+        stopTypewriterEffect();
+        editor.focus();
+        editor.setSelectionRange(0, 0);
+      } else {
+        createNewTab(template.suggestedFilename || template.title, template.content);
+      }
+      showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
+    } else {
+      const choice = dialog.showMessageBoxSync({
+        type: 'question',
+        buttons: [
+          i18n.t('template_btn_new_tab') || 'Nuova scheda',
+          i18n.t('template_btn_replace') || 'Sostituisci',
+          i18n.t('dialog_cancel') || 'Annulla'
+        ],
+        defaultId: 0,
+        cancelId: 2,
+        title: i18n.t('template_gallery_title') || 'Template',
+        message: i18n.t('template_replace_confirm') || 'Il file corrente contiene testo. Vuoi sostituire il contenuto o aprire in una nuova scheda?'
+      });
+
+      if (choice === 0) {
+        createNewTab(template.suggestedFilename || template.title, template.content);
+        showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
+      } else if (choice === 1) {
+        if (editor) {
+          isProgrammaticEdit = true;
+          editor.value = template.content;
+          lastKnownEditorValue = template.content;
+          isProgrammaticEdit = false;
+
+          if (currentTab) {
+            currentTab.content = template.content;
+            currentTab.isDirty = true;
+            currentTab.lastKnownEditorValue = template.content;
+          }
+          isDirty = true;
+          updateTabDirtyIndicator(activeTabId, true);
+          renderTabs();
+          updatePreview();
+          updateWordCount();
+          updateEditorOverlay();
+          stopTypewriterEffect();
+          editor.focus();
+          editor.setSelectionRange(0, 0);
+        }
+        showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
+      }
+    }
+  }
+
+  function handleDeleteTemplate(templateId) {
+    if (!window.MarkTemplates) return;
+    const template = window.MarkTemplates.getTemplateById(templateId);
+    if (!template) return;
+
+    const confirmMsg = i18n.t('template_delete_confirm', { name: template.title }) || `Eliminare il template "${template.title}"?`;
+    const res = dialog.showMessageBoxSync({
+      type: 'warning',
+      buttons: [i18n.t('dialog_cancel') || 'Annulla', i18n.t('template_delete') || 'Elimina'],
+      defaultId: 0,
+      cancelId: 0,
+      title: i18n.t('template_delete') || 'Elimina Template',
+      message: confirmMsg
+    });
+
+    if (res === 1) {
+      window.MarkTemplates.deleteCustomTemplate(templateId);
+      if (activePreviewedTemplateId === templateId) {
+        closeTemplatePreview();
+      }
+      renderTemplateCards();
+      showNotification('Template rimosso', 'info');
+    }
+  }
+
+  // Template Gallery Cards Delegation
+  if (templateCardsGrid) {
+    templateCardsGrid.addEventListener('click', (e) => {
+      const useBtn = e.target.closest('[data-action="use-template"]');
+      if (useBtn) {
+        e.stopPropagation();
+        const id = useBtn.dataset.templateId;
+        if (id) applyTemplate(id);
+        return;
+      }
+
+      const previewBtn = e.target.closest('[data-action="preview-template"]');
+      if (previewBtn) {
+        e.stopPropagation();
+        const id = previewBtn.dataset.templateId;
+        if (id) openTemplatePreview(id);
+        return;
+      }
+
+      const deleteBtn = e.target.closest('[data-action="delete-template"]');
+      if (deleteBtn) {
+        e.stopPropagation();
+        const id = deleteBtn.dataset.templateId;
+        if (id) handleDeleteTemplate(id);
+        return;
+      }
+
+      const card = e.target.closest('.template-card');
+      if (card) {
+        const id = card.dataset.templateId;
+        if (id) openTemplatePreview(id);
+      }
+    });
+  }
+
+  // Sidebar navigation in Gallery
+  templateNavBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.dataset.category;
+      if (cat) switchGalleryCategory(cat);
+    });
+  });
+
+  // Search input in Gallery
+  if (templateSearchInput) {
+    templateSearchInput.addEventListener('input', () => {
+      currentTemplateSearch = templateSearchInput.value;
+      if (templateSearchClear) {
+        templateSearchClear.classList.toggle('hidden', !currentTemplateSearch);
+      }
+      renderTemplateCards();
+    });
+  }
+
+  if (templateSearchClear) {
+    templateSearchClear.addEventListener('click', () => {
+      templateSearchInput.value = '';
+      currentTemplateSearch = '';
+      templateSearchClear.classList.add('hidden');
+      renderTemplateCards();
+      templateSearchInput.focus();
+    });
+  }
+
+  // Save current button in Gallery
+  if (btnGallerySaveCurrent) {
+    btnGallerySaveCurrent.addEventListener('click', () => {
+      openSaveTemplateModal();
+    });
+  }
+
+  // Gallery Close & Overlay
+  if (btnCloseTemplateGallery) {
+    btnCloseTemplateGallery.addEventListener('click', closeTemplateGallery);
+  }
+  if (templateGalleryOverlay) {
+    templateGalleryOverlay.addEventListener('click', closeTemplateGallery);
+  }
+
+  // Preview Drawer handlers
+  if (btnCloseTemplatePreview) {
+    btnCloseTemplatePreview.addEventListener('click', closeTemplatePreview);
+  }
+  if (btnPreviewRendered) {
+    btnPreviewRendered.addEventListener('click', () => setPreviewDrawerTab('rendered'));
+  }
+  if (btnPreviewSource) {
+    btnPreviewSource.addEventListener('click', () => setPreviewDrawerTab('source'));
+  }
+  if (btnUsePreviewedTemplate) {
+    btnUsePreviewedTemplate.addEventListener('click', () => {
+      if (activePreviewedTemplateId) {
+        applyTemplate(activePreviewedTemplateId);
+      }
+    });
+  }
+
+  // Save Template Modal Handlers
+  if (btnCloseSaveTemplate) {
+    btnCloseSaveTemplate.addEventListener('click', closeSaveTemplateModal);
+  }
+  if (btnCancelSaveTemplate) {
+    btnCancelSaveTemplate.addEventListener('click', closeSaveTemplateModal);
+  }
+  if (saveTemplateOverlay) {
+    saveTemplateOverlay.addEventListener('click', closeSaveTemplateModal);
+  }
+  if (btnConfirmSaveTemplate) {
+    btnConfirmSaveTemplate.addEventListener('click', () => {
+      const title = saveTemplateTitleInput ? saveTemplateTitleInput.value.trim() : '';
+      if (!title) {
+        showNotification('Inserisci un nome per il template', 'warning');
+        if (saveTemplateTitleInput) saveTemplateTitleInput.focus();
+        return;
+      }
+      const category = saveTemplateCategorySelect ? saveTemplateCategorySelect.value : 'personal';
+      const description = saveTemplateDescInput ? saveTemplateDescInput.value.trim() : '';
+      const content = editor ? editor.value : '';
+
+      try {
+        window.MarkTemplates.saveCustomTemplate({
+          title,
+          category,
+          description,
+          content
+        });
+        closeSaveTemplateModal();
+        showNotification(i18n.t('template_saved_success') || 'Template salvato con successo!', 'success');
+        if (templateGalleryModal && !templateGalleryModal.classList.contains('hidden')) {
+          renderTemplateCards();
+        }
+      } catch (err) {
+        dialog.showErrorBox('Errore salvataggio template', err.message);
+      }
+    });
+  }
+
+  // Explorer Popup delegation & close
+  if (newFilePopup) {
+    newFilePopup.addEventListener('click', (e) => {
+      const item = e.target.closest('.new-file-popup-item');
+      if (!item) return;
+      if (item.id === 'btn-popup-browse-all') {
+        toggleNewFilePopup(false);
+        openTemplateGallery();
+        return;
+      }
+      const tid = item.dataset.templateId;
+      if (tid) {
+        toggleNewFilePopup(false);
+        promptCreateFileWithTemplate(tid);
+      }
+    });
+  }
+
+  if (btnCloseNewFilePopup) {
+    btnCloseNewFilePopup.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleNewFilePopup(false);
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (newFilePopup && !newFilePopup.classList.contains('hidden')) {
+      if (!e.target.closest('#new-file-popup') && !e.target.closest('#new-file')) {
+        toggleNewFilePopup(false);
+      }
+    }
+  });
 
   initTitlebar();
 

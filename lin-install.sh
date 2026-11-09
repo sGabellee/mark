@@ -7,11 +7,20 @@ INSTALL_DIR="/opt/mark"
 DESKTOP_FILE="$HOME/.local/share/applications/Mark.desktop"
 BIN_DIR="/usr/local/bin"
 
-# Copia l'icona nella directory delle icone locali
+# Copia l'icona nella directory delle icone locali e nei temi standard XDG
 ICON_SOURCE="$PWD/build/mark.png"
 ICON_DEST="$HOME/.local/share/icons/mark.png"
-mkdir -p "$(dirname "$ICON_DEST")"
+mkdir -p "$HOME/.local/share/icons"
+mkdir -p "$HOME/.local/share/icons/hicolor/512x512/apps"
+mkdir -p "$HOME/.local/share/icons/hicolor/256x256/apps"
+mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
+mkdir -p "$HOME/.local/share/pixmaps"
+
 cp "$ICON_SOURCE" "$ICON_DEST"
+cp "$ICON_SOURCE" "$HOME/.local/share/icons/hicolor/512x512/apps/mark.png"
+cp "$ICON_SOURCE" "$HOME/.local/share/icons/hicolor/256x256/apps/mark.png"
+cp "$ICON_SOURCE" "$HOME/.local/share/icons/hicolor/scalable/apps/mark.png"
+cp "$ICON_SOURCE" "$HOME/.local/share/pixmaps/mark.png"
 
 # Funzione per barra di avanzamento testuale
 progress_bar() {
@@ -101,14 +110,24 @@ cat <<EOF > "$DESKTOP_FILE"
 [Desktop Entry]
 Version=1.0
 Name=Mark
-Comment=App Mark
-Exec=$INSTALL_DIR/mark
+GenericName=Markdown Editor
+Comment=Mark Markdown Editor
+Exec=$INSTALL_DIR/mark %U
 Icon=mark
 Terminal=false
 Type=Application
-Categories=Utility;
+Categories=Utility;TextEditor;Development;
+MimeType=text/markdown;text/x-markdown;
+StartupWMClass=mark
+StartupNotify=true
+Keywords=markdown;editor;notes;latex;katex;
 EOF
 chmod +x "$DESKTOP_FILE"
-update-desktop-database ~/.local/share/applications/
+
+# Rimuove eventuale vecchio symlink duplicato se presente
+rm -f "$HOME/.local/share/applications/mark.desktop"
+
+update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 
 echo "Puoi trovare Mark nel menu applicazioni o eseguirlo da terminale con 'mark' o 'mark nomefile.md'"

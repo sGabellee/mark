@@ -48,6 +48,9 @@
     <!-- TOP TITLEBAR (Linux & Windows) -->
     <div id="titlebar">
       <div class="titlebar-left">
+        <div class="titlebar-app-icon" id="titlebar-app-icon" title="Mark">
+          <img src="./images/mark.png" alt="Mark" onerror="this.style.display='none'" />
+        </div>
         <div class="titlebar-menus">
           <!-- FILE MENU -->
           <div class="titlebar-menu-dropdown" id="menu-dropdown-file">
@@ -167,6 +170,19 @@
               <button type="button" class="titlebar-menu-item" data-action="view-preview">
                 <span data-i18n="menu_preview">Preview</span>
                 <span class="titlebar-menu-shortcut">Ctrl+Shift+P</span>
+              </button>
+              <div class="titlebar-menu-separator"></div>
+              <button type="button" class="titlebar-menu-item" data-action="zoom-in">
+                <span data-i18n="menu_zoom_in">Zoom In</span>
+                <span class="titlebar-menu-shortcut">Ctrl++</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="zoom-out">
+                <span data-i18n="menu_zoom_out">Zoom Out</span>
+                <span class="titlebar-menu-shortcut">Ctrl+-</span>
+              </button>
+              <button type="button" class="titlebar-menu-item" data-action="zoom-reset">
+                <span data-i18n="menu_zoom_reset">Reset Zoom</span>
+                <span class="titlebar-menu-shortcut">Ctrl+0</span>
               </button>
               <div class="titlebar-menu-separator"></div>
               <button type="button" class="titlebar-menu-item" data-action="toggle-reading-mode">
@@ -521,6 +537,33 @@
                 </div>
               </div>
 
+              <!-- ZOOM -->
+              <div class="settings-row">
+                <div class="settings-label-group">
+                  <label data-i18n="settings_zoom">Zoom</label>
+                  <span class="settings-sublabel" data-i18n="settings_zoom_desc">Scale entire editor, preview, and interface (Ctrl + / - / 0)</span>
+                </div>
+                <div class="settings-zoom-controls">
+                  <button type="button" id="btn-zoom-out" class="collab-tab" title="Zoom Out (Ctrl -)">-</button>
+                  <span id="settings-zoom-display" class="settings-zoom-display">100%</span>
+                  <button type="button" id="btn-zoom-in" class="collab-tab" title="Zoom In (Ctrl +)">+</button>
+                  <button type="button" id="btn-zoom-reset" class="collab-tab" data-i18n="settings_zoom_reset">Reset</button>
+                </div>
+              </div>
+
+              <!-- WINDOW CONTROLS STYLE (Linux & Windows) -->
+              <div class="settings-row" id="row-window-controls-style">
+                <div class="settings-label-group">
+                  <label data-i18n="settings_window_controls">Window Controls Style</label>
+                  <span class="settings-sublabel" data-i18n="settings_window_controls_desc">Choose the style of titlebar window buttons</span>
+                </div>
+                <div class="collab-tabs settings-tabs" id="win-controls-segmented">
+                  <button type="button" class="collab-tab active" data-controls-style="ubuntu" data-i18n="window_controls_ubuntu">Ubuntu / GNOME</button>
+                  <button type="button" class="collab-tab" data-controls-style="mac" data-i18n="window_controls_mac">macOS Dots</button>
+                  <button type="button" class="collab-tab" data-controls-style="win" data-i18n="window_controls_win">Windows Flush</button>
+                </div>
+              </div>
+
               <!-- TAB SIZE -->
               <div class="settings-row">
                 <div class="settings-label-group">
@@ -785,6 +828,18 @@
                   <div class="shortcut-item">
                     <span class="shortcut-action" data-i18n="shortcut_solo_preview">Solo Preview mode</span>
                     <span class="shortcut-keys" data-shortcut="solo-preview"></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action" data-i18n="shortcut_zoom_in">Zoom In</span>
+                    <span class="shortcut-keys" data-shortcut="zoom-in"></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action" data-i18n="shortcut_zoom_out">Zoom Out</span>
+                    <span class="shortcut-keys" data-shortcut="zoom-out"></span>
+                  </div>
+                  <div class="shortcut-item">
+                    <span class="shortcut-action" data-i18n="shortcut_zoom_reset">Reset Zoom</span>
+                    <span class="shortcut-keys" data-shortcut="zoom-reset"></span>
                   </div>
                   <div class="shortcut-item">
                     <span class="shortcut-action" data-i18n="shortcut_toggle_theme">Toggle Theme</span>

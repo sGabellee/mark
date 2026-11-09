@@ -78,6 +78,14 @@ const translations = {
 
     settings_font_size: "Font Size",
     settings_font_size_desc: "Text size for the editor and preview in pixels",
+    settings_zoom: "Zoom",
+    settings_zoom_desc: "Scale entire editor, preview, and interface (Ctrl + / - / 0)",
+    settings_zoom_reset: "Reset (100%)",
+    settings_window_controls: "Window Controls Style",
+    settings_window_controls_desc: "Choose the style of titlebar window buttons on Linux / Windows",
+    window_controls_ubuntu: "Ubuntu / GNOME",
+    window_controls_mac: "macOS Dots",
+    window_controls_win: "Windows Flush",
     settings_tab_size: "Tab Size",
     settings_tab_size_desc: "Number of spaces inserted for tab indentation",
     settings_preview_text_align: "Preview Text Alignment",
@@ -165,6 +173,9 @@ const translations = {
     shortcut_toggle_explorer: "Toggle Explorer sidebar",
     shortcut_solo_editor: "Solo Editor view mode",
     shortcut_solo_preview: "Solo Preview view mode",
+    shortcut_zoom_in: "Zoom In",
+    shortcut_zoom_out: "Zoom Out",
+    shortcut_zoom_reset: "Reset Zoom",
     shortcut_toggle_theme: "Toggle Light / Dark theme",
     shortcut_exit_modal: "Close dialog / Exit reading mode",
 
@@ -313,6 +324,9 @@ const translations = {
     menu_editor: "Editor",
     menu_preview: "Preview",
     view_reading_mode: "Reading Mode",
+    menu_zoom_in: "Zoom In",
+    menu_zoom_out: "Zoom Out",
+    menu_zoom_reset: "Reset Zoom",
     menu_dark_mode: "Dark Mode"
   },
   it: {
@@ -393,6 +407,14 @@ const translations = {
 
     settings_font_size: "Dimensione Carattere",
     settings_font_size_desc: "Dimensione del testo dell'editor e dell'anteprima in pixel",
+    settings_zoom: "Zoom",
+    settings_zoom_desc: "Scala editor, anteprima e interfaccia (Ctrl + / - / 0)",
+    settings_zoom_reset: "Reimposta (100%)",
+    settings_window_controls: "Stile controlli finestra",
+    settings_window_controls_desc: "Scegli lo stile dei pulsanti della barra del titolo",
+    window_controls_ubuntu: "Ubuntu / GNOME",
+    window_controls_mac: "Pallini macOS",
+    window_controls_win: "Stile Windows",
     settings_tab_size: "Dimensione Tab",
     settings_tab_size_desc: "Numero di spazi inseriti per ciascuna indentazione tab",
     settings_preview_text_align: "Allineamento testo anteprima",
@@ -480,6 +502,9 @@ const translations = {
     shortcut_toggle_explorer: "Mostra / nascondi barra Explorer",
     shortcut_solo_editor: "Modalità solo Editor",
     shortcut_solo_preview: "Modalità solo Anteprima",
+    shortcut_zoom_in: "Ingrandisci zoom",
+    shortcut_zoom_out: "Riduci zoom",
+    shortcut_zoom_reset: "Reimposta zoom (100%)",
     shortcut_toggle_theme: "Alterna tema Chiaro / Scuro",
     shortcut_exit_modal: "Chiudi impostazioni / Esci da lettura",
 
@@ -628,6 +653,9 @@ const translations = {
     menu_editor: "Editor",
     menu_preview: "Anteprima",
     view_reading_mode: "Modalità lettura",
+    menu_zoom_in: "Ingrandisci zoom",
+    menu_zoom_out: "Riduci zoom",
+    menu_zoom_reset: "Reimposta zoom",
     menu_dark_mode: "Modalità scura"
   }
 };

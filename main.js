@@ -5,6 +5,14 @@ const remoteMain = require("@electron/remote/main");
 const { autoUpdater } = require("electron-updater");
 const i18n = require("./i18n.js");
 
+app.setName("Mark");
+if (process.platform === 'linux') {
+  app.setDesktopName('Mark.desktop');
+}
+if (process.platform === 'win32') {
+  app.setAppUserModelId("com.Giovanni.Mark");
+}
+
 let win;
 let printWin = null;
 let openFilePath = null; 
@@ -96,12 +104,16 @@ function createWindow() {
   initializeRemote();
 
   const isMac = process.platform === 'darwin';
+  const iconPath = fs.existsSync(path.join(__dirname, 'images', 'mark.png'))
+    ? path.join(__dirname, 'images', 'mark.png')
+    : path.join(__dirname, 'build', 'mark.png');
 
   const windowOptions = {
     width: 1200,
     height: 800,
     minWidth: 650,
     minHeight: 400,
+    icon: iconPath,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 15, y: 19 } }
       : { frame: false }),
@@ -342,6 +354,28 @@ function buildApplicationMenu() {
           accelerator: "CmdOrCtrl+Shift+P",
           click: () => {
             win.webContents.send("toggle-preview-view");
+          }
+        },
+        { type: "separator" },
+        {
+          label: i18n.t("menu_zoom_in") || "Zoom In",
+          accelerator: "CmdOrCtrl+Plus",
+          click: () => {
+            if (win && !win.isDestroyed()) win.webContents.send("zoom-in");
+          }
+        },
+        {
+          label: i18n.t("menu_zoom_out") || "Zoom Out",
+          accelerator: "CmdOrCtrl+-",
+          click: () => {
+            if (win && !win.isDestroyed()) win.webContents.send("zoom-out");
+          }
+        },
+        {
+          label: i18n.t("menu_zoom_reset") || "Reset Zoom",
+          accelerator: "CmdOrCtrl+0",
+          click: () => {
+            if (win && !win.isDestroyed()) win.webContents.send("zoom-reset");
           }
         },
         { type: "separator" },

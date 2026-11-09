@@ -7,15 +7,15 @@
 A fast, minimal Markdown editor for notes, docs and studying<br/>
 No account. No cloud. No bloat.
 
-[![Release](https://img.shields.io/github/v/release/gwetano/mark?style=flat-square&color=1e2327&label=release)](https://github.com/gwetano/mark/releases/latest)
-[![License](https://img.shields.io/github/license/gwetano/mark?style=flat-square&color=1e2327)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20·%20macOS%20·%20Linux-1e2327?style=flat-square)](https://github.com/gwetano/mark/releases/latest)
+[![Release](https://img.shields.io/github/v/release/sGabellee/mark?style=flat-square&color=1e2327&label=release)](https://github.com/sGabellee/mark/releases/latest)
+[![License](https://img.shields.io/github/license/sGabellee/mark?style=flat-square&color=1e2327)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20·%20macOS%20·%20Linux-1e2327?style=flat-square)](https://github.com/sGabellee/mark/releases/latest)
 
-[![Download for Windows](https://img.shields.io/badge/Windows-Download-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/gwetano/mark/releases/latest)
-[![Download for macOS](https://img.shields.io/badge/macOS-Download-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/gwetano/mark/releases/latest)
-[![Download for Linux](https://img.shields.io/badge/Linux-Download-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/gwetano/mark/releases/latest)
+[![Download for Windows](https://img.shields.io/badge/Windows-Download-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/sGabellee/mark/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/macOS-Download-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/sGabellee/mark/releases/latest)
+[![Download for Linux](https://img.shields.io/badge/Linux-Download-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/sGabellee/mark/releases/latest)
 
-[**Website**](https://gwetano.vercel.app/mark/) · [**Releases**](https://github.com/gwetano/mark/releases)
+[**Website**](https://gwetano.vercel.app/mark/) · [**Releases**](https://github.com/sGabellee/mark/releases)
 <br/>
 
 <img src="build/preview.gif" alt="Mark preview" width="800" />
@@ -43,7 +43,7 @@ Most editors are too heavy and want your data in their cloud. Mark opens folders
 
 ## Quick start
 
-1. Download the build for your system from the [latest release](https://github.com/gwetano/mark/releases/latest)
+1. Download the build for your system from the [latest release](https://github.com/sGabellee/mark/releases/latest)
 2. Open a folder (`Ctrl/Cmd + Shift + O`)
 3. Write. Export when done.
 
@@ -57,7 +57,7 @@ Most editors are too heavy and want your data in their cloud. Mark opens folders
 ### Build from source
 
 ```bash
-git clone https://github.com/gwetano/mark.git
+git clone https://github.com/sGabellee/mark.git
 cd mark
 ```
 

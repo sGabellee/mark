@@ -12,7 +12,7 @@ const savedLang = localStorage.getItem('mark.lang') || 'en';
 i18n.setLanguage(savedLang);
 
 // ====== IMPORTS ==============================================================
-const { ipcRenderer, remote, shell } = require("electron");
+const { ipcRenderer, remote, shell, webFrame } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -186,7 +186,7 @@ ipcRenderer.on('update-error', (event, errorMsg) => {
   });
 
   if (choice === 0) {
-    shell.openExternal('https://github.com/gwetano/mark/releases/latest');
+    shell.openExternal('https://github.com/sGabellee/mark/releases/latest');
   }
 });
 
@@ -224,6 +224,109 @@ if (platform !== 'darwin') {
     }
   } catch (err) { /* noop */ }
 }
+
+// Window controls style initialization (Linux / Windows)
+function applyWindowControlsStyle(style) {
+  document.body.classList.remove('win-ctrl-ubuntu', 'win-ctrl-mac', 'win-ctrl-win');
+  document.body.classList.add(`win-ctrl-${style}`);
+  localStorage.setItem('mark.windowControlsStyle', style);
+  document.querySelectorAll('#win-controls-segmented button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.controlsStyle === style);
+  });
+}
+const savedControlsStyle = localStorage.getItem('mark.windowControlsStyle') || (platform === 'linux' ? 'ubuntu' : 'win');
+applyWindowControlsStyle(savedControlsStyle);
+
+// ====== ZOOM MANAGEMENT (webFrame) =========================================
+let currentZoomFactor = 1.0;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2.5;
+const ZOOM_STEP = 0.1;
+
+function updateZoomDisplay() {
+  const zoomDisplay = document.getElementById('settings-zoom-display');
+  if (zoomDisplay) {
+    zoomDisplay.textContent = `${Math.round(currentZoomFactor * 100)}%`;
+  }
+}
+
+function applyZoom(factor, notify = true) {
+  factor = Math.round(factor * 10) / 10;
+  if (factor < MIN_ZOOM) factor = MIN_ZOOM;
+  if (factor > MAX_ZOOM) factor = MAX_ZOOM;
+
+  currentZoomFactor = factor;
+  if (webFrame && typeof webFrame.setZoomFactor === 'function') {
+    try {
+      webFrame.setZoomFactor(factor);
+    } catch (e) {
+      console.warn('[Zoom] setZoomFactor error:', e);
+    }
+  }
+  localStorage.setItem('mark.zoomFactor', factor.toFixed(2));
+  updateZoomDisplay();
+
+  if (notify && typeof showNotification === 'function') {
+    showNotification(`Zoom: ${Math.round(factor * 100)}%`, 'info');
+  }
+}
+
+function zoomIn() {
+  applyZoom(currentZoomFactor + ZOOM_STEP, true);
+}
+
+function zoomOut() {
+  applyZoom(currentZoomFactor - ZOOM_STEP, true);
+}
+
+function zoomReset() {
+  applyZoom(1.0, true);
+}
+
+try {
+  const savedZoom = localStorage.getItem('mark.zoomFactor');
+  if (savedZoom) {
+    const parsed = parseFloat(savedZoom);
+    if (!isNaN(parsed) && parsed >= MIN_ZOOM && parsed <= MAX_ZOOM) {
+      applyZoom(parsed, false);
+    }
+  }
+} catch (e) { /* noop */ }
+
+// IPC listeners for zoom
+ipcRenderer.on('zoom-in', () => zoomIn());
+ipcRenderer.on('zoom-out', () => zoomOut());
+ipcRenderer.on('zoom-reset', () => zoomReset());
+
+// Global zoom keydown listener with useCapture: true
+window.addEventListener('keydown', (e) => {
+  const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+  if (!isCmdOrCtrl || e.altKey) return;
+
+  if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd' || (e.shiftKey && e.code === 'Equal')) {
+    e.preventDefault();
+    zoomIn();
+  } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract' || e.code === 'Minus') {
+    e.preventDefault();
+    zoomOut();
+  } else if (e.key === '0' || e.code === 'Numpad0' || e.code === 'Digit0') {
+    e.preventDefault();
+    zoomReset();
+  }
+}, true);
+
+// Global wheel zoom listener
+window.addEventListener('wheel', (e) => {
+  const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+  if (isCmdOrCtrl) {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      zoomIn();
+    } else if (e.deltaY > 0) {
+      zoomOut();
+    }
+  }
+}, { passive: false });
 
 // ====== GROQ AI (facoltativo) ===============================================
 let GROQ_API_KEY = '';
@@ -5760,6 +5863,9 @@ window.addEventListener("DOMContentLoaded", () => {
       'toggle-explorer': isMac ? ['⌘', 'R'] : ['Ctrl', 'R'],
       'solo-editor': isMac ? ['⇧', '⌘', 'L'] : ['Ctrl', 'Shift', 'L'],
       'solo-preview': isMac ? ['⇧', '⌘', 'P'] : ['Ctrl', 'Shift', 'P'],
+      'zoom-in': isMac ? ['⌘', '+'] : ['Ctrl', '+'],
+      'zoom-out': isMac ? ['⌘', '-'] : ['Ctrl', '-'],
+      'zoom-reset': isMac ? ['⌘', '0'] : ['Ctrl', '0'],
       'toggle-theme': isMac ? ['⌘', 'M'] : ['Ctrl', 'M'],
       'exit-modal': ['Esc']
     };
@@ -6587,6 +6693,21 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --- ZOOM BUTTONS IN SETTINGS MODAL ---
+  document.getElementById('btn-zoom-in')?.addEventListener('click', () => zoomIn());
+  document.getElementById('btn-zoom-out')?.addEventListener('click', () => zoomOut());
+  document.getElementById('btn-zoom-reset')?.addEventListener('click', () => zoomReset());
+  updateZoomDisplay();
+
+  // --- WINDOW CONTROLS STYLE SEGMENTED BUTTONS ---
+  const winControlsButtons = document.querySelectorAll('#win-controls-segmented button');
+  winControlsButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const style = btn.dataset.controlsStyle;
+      if (style) applyWindowControlsStyle(style);
+    });
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (currentCalloutPicker) {
@@ -7038,6 +7159,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
           case 'view-preview':
             document.getElementById("btn-view-preview")?.click();
+            break;
+
+          case 'zoom-in':
+            zoomIn();
+            break;
+
+          case 'zoom-out':
+            zoomOut();
+            break;
+
+          case 'zoom-reset':
+            zoomReset();
             break;
 
           case 'toggle-reading-mode':

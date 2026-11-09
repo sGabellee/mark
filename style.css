@@ -56,7 +56,25 @@ pre code {
 
 body.platform-linux,
 body.platform-win32 {
-  --titlebar-height: 30px;
+  --titlebar-height: 34px;
+}
+
+body.platform-linux {
+  border-radius: 10px;
+  border: 1px solid var(--explorer-border);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+
+body.dark.platform-linux {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+body.platform-linux.window-maximized {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 body {
@@ -112,6 +130,16 @@ body.platform-win32 #titlebar {
   justify-content: space-between;
 }
 
+body.platform-linux #titlebar {
+  border-top-left-radius: 9px;
+  border-top-right-radius: 9px;
+}
+
+body.platform-linux.window-maximized #titlebar {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
 body.reading-mode-active #titlebar {
   display: none !important;
 }
@@ -121,7 +149,7 @@ body.reading-mode-active #titlebar {
   align-items: center;
   height: 100%;
   flex: 0 0 auto;
-  padding-left: 6px;
+  padding-left: 8px;
   -webkit-app-region: no-drag;
 }
 
@@ -129,11 +157,18 @@ body.reading-mode-active #titlebar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   margin-right: 6px;
-  color: var(--fg);
-  opacity: 0.85;
+  user-select: none;
+  pointer-events: none;
+}
+
+.titlebar-app-icon img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  display: block;
 }
 
 .titlebar-menus {
@@ -291,24 +326,34 @@ body.platform-darwin #navbar {
   -webkit-app-region: no-drag;
 }
 
-body.platform-win32 #window-controls {
+body.platform-win32 #window-controls,
+body.win-ctrl-win #window-controls {
   display: flex;
   align-items: center;
   height: 100%;
   margin: 0;
+  padding: 0;
 }
 
-body.platform-linux #window-controls {
+body.platform-linux #window-controls,
+body.win-ctrl-ubuntu #window-controls {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 6px;
   margin: 0;
-  padding-right: 6px;
+  padding-right: 10px;
+  height: 100%;
   background: none;
   border: none;
 }
 
-body.dark.platform-linux #window-controls {
+body.win-ctrl-mac #window-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-right: 12px;
+  height: 100%;
   background: none;
   border: none;
 }
@@ -320,7 +365,7 @@ body.dark.platform-linux #window-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.15s, color 0.15s, transform 0.1s;
+  transition: background-color 0.15s, color 0.15s, transform 0.1s, opacity 0.15s;
   -webkit-app-region: no-drag;
   cursor: pointer;
   padding: 0;
@@ -344,44 +389,128 @@ body.window-maximized .win-ctrl-btn .icon-restore {
   display: block;
 }
 
-/* --- WINDOWS STYLES --- */
-body.platform-win32 .win-ctrl-btn {
-  width: 46px;
-  height: 100%;
-}
-
-body.platform-win32 .win-ctrl-btn:hover {
-  background-color: rgba(128, 128, 128, 0.25);
-}
-
-body.platform-win32 .win-close-btn:hover {
-  background-color: #e81123;
-  color: white;
-}
-
-/* --- LINUX STYLES --- */
-body.platform-linux .win-ctrl-btn {
+/* --- UBUNTU / GNOME STYLES (Default on Linux) --- */
+body.platform-linux .win-ctrl-btn,
+body.win-ctrl-ubuntu .win-ctrl-btn {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
-  background-color: transparent;
+  border-radius: 50%;
+  background-color: rgba(128, 128, 128, 0.14);
+  color: var(--fg);
 }
 
-body.platform-linux .win-ctrl-btn:hover {
-  background-color: rgba(0, 0, 0, 0.08);
+body.platform-linux .win-ctrl-btn:hover,
+body.win-ctrl-ubuntu .win-ctrl-btn:hover {
+  background-color: rgba(128, 128, 128, 0.3);
+  color: var(--fg);
 }
 
-body.dark.platform-linux .win-ctrl-btn:hover {
-  background-color: rgba(255, 255, 255, 0.14);
+body.dark.platform-linux .win-ctrl-btn,
+body.dark.win-ctrl-ubuntu .win-ctrl-btn {
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
-body.platform-linux .win-close-btn:hover {
-  background-color: #e81123 !important;
+body.dark.platform-linux .win-ctrl-btn:hover,
+body.dark.win-ctrl-ubuntu .win-ctrl-btn:hover {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+body.platform-linux .win-close-btn:hover,
+body.win-ctrl-ubuntu .win-close-btn:hover {
+  background-color: #e95420 !important;
   color: #ffffff !important;
 }
 
-body.platform-linux .win-ctrl-btn:active {
-  transform: scale(0.94);
+body.platform-linux .win-ctrl-btn:active,
+body.win-ctrl-ubuntu .win-ctrl-btn:active {
+  transform: scale(0.92);
+}
+
+/* --- MACOS TRAFFIC LIGHTS STYLE --- */
+body.win-ctrl-mac .win-ctrl-btn {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+body.win-ctrl-mac #win-close {
+  background-color: #ff5f56;
+  border: 1px solid #e0443e;
+}
+
+body.win-ctrl-mac #win-minimize {
+  background-color: #ffbd2e;
+  border: 1px solid #dea123;
+}
+
+body.win-ctrl-mac #win-maximize {
+  background-color: #27c93f;
+  border: 1px solid #1aab29;
+}
+
+body.win-ctrl-mac .win-ctrl-btn svg {
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.12s ease;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+body.win-ctrl-mac #window-controls:hover .win-ctrl-btn svg {
+  opacity: 1;
+}
+
+body.win-ctrl-mac .win-ctrl-btn:active {
+  filter: brightness(0.85);
+  transform: scale(0.92);
+}
+
+/* --- WINDOWS STYLES --- */
+body.platform-win32 .win-ctrl-btn,
+body.win-ctrl-win .win-ctrl-btn {
+  width: 46px;
+  height: 100%;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+body.platform-win32 .win-ctrl-btn:hover,
+body.win-ctrl-win .win-ctrl-btn:hover {
+  background-color: rgba(128, 128, 128, 0.25);
+}
+
+body.platform-win32 .win-close-btn:hover,
+body.win-ctrl-win .win-close-btn:hover {
+  background-color: #e81123 !important;
+  color: white !important;
+}
+
+/* --- SETTINGS: ZOOM & WINDOW CONTROLS ROW --- */
+.settings-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-zoom-controls .collab-tab {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.settings-zoom-display {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: center;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
 }
 
 .navbar-left {

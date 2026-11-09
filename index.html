@@ -208,13 +208,26 @@
                 <span data-i18n="view_reading_mode">Reading Mode</span>
                 <span class="titlebar-menu-shortcut">F11</span>
               </button>
-              <button type="button" class="titlebar-menu-item" data-action="toggle-dark-mode">
-                <span data-i18n="menu_dark_mode" id="titlebar-menu-dark-mode-text">Dark Mode</span>
-                <span class="titlebar-menu-shortcut">Ctrl+M</span>
-              </button>
-              <button type="button" class="titlebar-menu-item" data-action="set-theme-github">
-                <span data-i18n="menu_github_theme">GitHub Theme</span>
-              </button>
+              <div class="titlebar-menu-submenu-wrapper">
+                <div class="titlebar-menu-item titlebar-submenu-trigger" tabindex="0">
+                  <span data-i18n="menu_theme">Theme</span>
+                  <div class="titlebar-submenu-right">
+                    <span class="titlebar-menu-shortcut">Ctrl+M</span>
+                    <span class="titlebar-submenu-arrow">▸</span>
+                  </div>
+                </div>
+                <div class="titlebar-submenu-content">
+                  <button type="button" class="titlebar-menu-item" data-action="set-theme-light">
+                    <span data-i18n="menu_theme_light">Light Mode</span>
+                  </button>
+                  <button type="button" class="titlebar-menu-item" data-action="set-theme-dark">
+                    <span data-i18n="menu_theme_dark">Dark Mode</span>
+                  </button>
+                  <button type="button" class="titlebar-menu-item" data-action="set-theme-github">
+                    <span data-i18n="menu_theme_github">GitHub Mode</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

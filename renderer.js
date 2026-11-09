@@ -1530,7 +1530,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     input.focus();
-    input.select();
+    const dotIndex = input.value.lastIndexOf('.');
+    if (dotIndex > 0) {
+      input.setSelectionRange(0, dotIndex);
+    } else {
+      input.select();
+    }
 
     let isHandled = false;
 
@@ -1697,6 +1702,9 @@ window.addEventListener("DOMContentLoaded", () => {
       activeTab.isDirty = dirty;
       if (typeof updateTabDirtyIndicator === 'function') {
         updateTabDirtyIndicator(activeTab.id, dirty);
+      }
+      if (activeTab.filePath && typeof updateExplorerItemDirty === 'function') {
+        updateExplorerItemDirty(activeTab.filePath, dirty);
       }
     }
     if (typeof updateTitlebarTitle === 'function') {
@@ -4003,14 +4011,16 @@ window.addEventListener("DOMContentLoaded", () => {
   ipcRenderer.on("toggle-preview", () => toggleViewMode("solo-editor"));
   ipcRenderer.on("toggle-editor", () => toggleViewMode("solo-preview"));
   ipcRenderer.on("insert-link", () => { if (typeof insertMarkdownLink === 'function') insertMarkdownLink(); });
-  ipcRenderer.on("toggle-theme", () => {
+  function cycleTheme() {
     const currentTheme = localStorage.getItem("mark-theme") || "light";
-    const nextTheme = (currentTheme === "dark" || currentTheme === "github") ? "light" : "dark";
+    const cycle = { light: 'dark', dark: 'github', github: 'light' };
+    const nextTheme = cycle[currentTheme] || 'dark';
     applyTheme(nextTheme);
-  });
-  ipcRenderer.on("set-theme-github", () => {
-    applyTheme("github");
-  });
+  }
+  ipcRenderer.on("toggle-theme", () => cycleTheme());
+  ipcRenderer.on("set-theme-light", () => applyTheme("light"));
+  ipcRenderer.on("set-theme-dark", () => applyTheme("dark"));
+  ipcRenderer.on("set-theme-github", () => applyTheme("github"));
 
   // ===== Inserimento immagini via menu =====
   ipcRenderer.on("insert-image-from-file", async (event, imagePath) => {
@@ -4404,6 +4414,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const sc = document.getElementById("search-container");
     const isMod = isMac ? (e.metaKey || e.ctrlKey) : e.ctrlKey;
     if (isMod && (e.key === "f" || e.key === "F")) { e.preventDefault(); toggleSearchPanel(true); }
+    if (isMod && !e.shiftKey && !e.altKey && (e.key === "m" || e.key === "M")) { e.preventDefault(); cycleTheme(); }
     if (isMod && !e.shiftKey && (e.key === "l" || e.key === "L")) { e.preventDefault(); insertMarkdownLink(); }
     if (isMod && e.shiftKey && (e.key === "l" || e.key === "L")) { e.preventDefault(); toggleViewMode("solo-editor"); }
     if (isMod && e.shiftKey && (e.key === "p" || e.key === "P")) { e.preventDefault(); toggleViewMode("solo-preview"); }
@@ -5291,9 +5302,10 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    const isNewUnsaved = !fs.existsSync(normalPath);
     let fileContent = content;
     if (fileContent === null) {
-      if (fs.existsSync(normalPath)) {
+      if (!isNewUnsaved) {
         try {
           fileContent = fs.readFileSync(normalPath, 'utf8');
         } catch (err) {
@@ -5310,7 +5322,7 @@ window.addEventListener("DOMContentLoaded", () => {
       tabs[0].filePath = normalPath;
       tabs[0].title = path.basename(normalPath);
       tabs[0].content = fileContent;
-      tabs[0].isDirty = false;
+      tabs[0].isDirty = isNewUnsaved;
       tabs[0].lastKnownEditorValue = fileContent;
       tabs[0].actionHistory = [];
       activeTabId = null;
@@ -5319,6 +5331,9 @@ window.addEventListener("DOMContentLoaded", () => {
       const containingFolder = path.dirname(normalPath);
       if (currentFolderPath !== containingFolder && !currentFolderPath) {
         openFolder(containingFolder);
+      } else if (currentFolderPath && fileTree) {
+        fileTree.innerHTML = '';
+        createFileTree(currentFolderPath, fileTree);
       }
       return tabs[0];
     }
@@ -5330,7 +5345,7 @@ window.addEventListener("DOMContentLoaded", () => {
       filePath: normalPath,
       title: path.basename(normalPath),
       content: fileContent,
-      isDirty: false,
+      isDirty: isNewUnsaved,
       scrollTop: 0,
       selectionStart: 0,
       selectionEnd: 0,
@@ -5344,6 +5359,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const containingFolder = path.dirname(normalPath);
     if (currentFolderPath !== containingFolder && !currentFolderPath) {
       openFolder(containingFolder);
+    } else if (currentFolderPath && fileTree) {
+      fileTree.innerHTML = '';
+      createFileTree(currentFolderPath, fileTree);
     }
     return newTab;
   }
@@ -5362,6 +5380,10 @@ window.addEventListener("DOMContentLoaded", () => {
           isDirty = false;
         }
         updateTabDirtyIndicator(tab.id, false);
+        if (currentFolderPath && fileTree) {
+          fileTree.innerHTML = '';
+          createFileTree(currentFolderPath, fileTree);
+        }
         return true;
       } catch (err) {
         dialog.showErrorBox('Error saving file', err.message);
@@ -5468,6 +5490,11 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     tabs.splice(tabIndex, 1);
+
+    if (tab.filePath && !fs.existsSync(tab.filePath) && currentFolderPath && fileTree) {
+      fileTree.innerHTML = '';
+      createFileTree(currentFolderPath, fileTree);
+    }
 
     if (tab.id === activeTabId) {
       if (tabs.length > 0) {
@@ -5836,13 +5863,33 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function isMarkdownFile(filePath) { return filePath.toLowerCase().endsWith('.md'); }
+
+  function updateExplorerItemDirty(filePath, dirty) {
+    if (!filePath || !fileTree) return;
+    const normalPath = path.resolve(filePath);
+    const items = fileTree.querySelectorAll('.tree-file');
+    items.forEach(el => {
+      if (el.dataset.path && path.resolve(el.dataset.path) === normalPath) {
+        const labelEl = el.querySelector('.tree-label');
+        const baseName = path.basename(filePath);
+        if (labelEl) {
+          labelEl.textContent = dirty ? `${baseName} *` : baseName;
+        }
+      }
+    });
+  }
+
   function createFileTree(folderPath, parentElement) {
     if (!parentElement) return;
     try {
-      const items = fs.readdirSync(folderPath);
+      const items = fs.existsSync(folderPath) ? fs.readdirSync(folderPath) : [];
       // Folders
       items
-        .filter(item => fs.statSync(path.join(folderPath, item)).isDirectory())
+        .filter(item => {
+          try {
+            return fs.statSync(path.join(folderPath, item)).isDirectory();
+          } catch (_) { return false; }
+        })
         .sort((a, b) => a.localeCompare(b))
         .forEach(item => {
           const itemPath = path.join(folderPath, item);
@@ -5874,36 +5921,52 @@ window.addEventListener("DOMContentLoaded", () => {
             showFolderContextMenu(itemPath);
           });
         });
-      // Files (.md)
-      items
-        .filter(item => {
+      // Files (.md) - combine disk markdown files with open tabs located in this directory that might not yet be written to disk
+      const diskFiles = items.filter(item => {
+        try {
           const itemPath = path.join(folderPath, item);
           return fs.statSync(itemPath).isFile() && isMarkdownFile(itemPath);
-        })
-        .sort((a, b) => a.localeCompare(b))
-        .forEach(item => {
-          const itemPath = path.join(folderPath, item);
-          const fileElement = document.createElement('div');
-          fileElement.className = 'tree-item tree-file';
-          fileElement.title = item;
-          fileElement.dataset.path = itemPath;
-          fileElement.tabIndex = -1;
-          fileElement.innerHTML = `
-            <span class="tree-file-icon">${FILE_SVG}</span>
-            <span class="tree-label">${item}</span>
-          `;
-          fileElement.addEventListener('click', (e) => {
-            clearExplorerSelection();
-            openFileInTab(itemPath);
-          });
-          fileElement.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            selectExplorerItem(itemPath, fileElement);
-            showFileContextMenu(itemPath, fileElement);
-          });
-          parentElement.appendChild(fileElement);
+        } catch (_) { return false; }
+      });
+
+      const pendingTabs = (tabs || []).filter(t => {
+        if (!t.filePath || !isMarkdownFile(t.filePath)) return false;
+        try {
+          return path.resolve(path.dirname(t.filePath)) === path.resolve(folderPath);
+        } catch (_) { return false; }
+      });
+
+      const allFileNames = Array.from(new Set([...diskFiles, ...pendingTabs.map(t => path.basename(t.filePath))]))
+        .sort((a, b) => a.localeCompare(b));
+
+      allFileNames.forEach(item => {
+        const itemPath = path.join(folderPath, item);
+        const normalPath = path.resolve(itemPath);
+        const matchingTab = (tabs || []).find(t => t.filePath && path.resolve(t.filePath) === normalPath);
+        const isNotOnDisk = !fs.existsSync(normalPath);
+        const isUnsaved = matchingTab ? (matchingTab.isDirty || isNotOnDisk) : isNotOnDisk;
+
+        const fileElement = document.createElement('div');
+        fileElement.className = 'tree-item tree-file';
+        fileElement.title = item;
+        fileElement.dataset.path = itemPath;
+        fileElement.tabIndex = -1;
+        fileElement.innerHTML = `
+          <span class="tree-file-icon">${FILE_SVG}</span>
+          <span class="tree-label">${item}${isUnsaved ? ' *' : ''}</span>
+        `;
+        fileElement.addEventListener('click', (e) => {
+          clearExplorerSelection();
+          openFileInTab(itemPath);
         });
+        fileElement.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          selectExplorerItem(itemPath, fileElement);
+          showFileContextMenu(itemPath, fileElement);
+        });
+        parentElement.appendChild(fileElement);
+      });
     } catch (error) { console.error('Errore durante la lettura della directory:', error); }
   }
 
@@ -6466,6 +6529,11 @@ window.addEventListener("DOMContentLoaded", () => {
         themeBtnGithub.classList.toggle("active", theme === "github");
       }
     }
+
+    document.querySelectorAll('[data-action^="set-theme-"]').forEach(btn => {
+      const target = btn.dataset.action.replace('set-theme-', '');
+      btn.classList.toggle('active', target === theme);
+    });
 
     // Aggiorna etichetta dinamica del tasto dark / light mode (Point 5)
     const isCurrentlyDark = theme === "dark" || theme === "github";
@@ -7363,8 +7431,8 @@ window.addEventListener("DOMContentLoaded", () => {
       item.addEventListener('click', async (e) => {
         e.stopPropagation();
         const action = item.dataset.action;
-        closeAllMenus();
         if (!action) return;
+        closeAllMenus();
 
         switch (action) {
           // FILE ACTIONS
@@ -7536,18 +7604,21 @@ window.addEventListener("DOMContentLoaded", () => {
             if (typeof setReadingMode === 'function') setReadingMode(!isReadingMode);
             break;
 
-          case 'toggle-dark-mode':
-            if (typeof applyTheme === 'function') {
-              const currentTheme = localStorage.getItem("mark-theme") || "light";
-              const nextTheme = (currentTheme === "dark" || currentTheme === "github") ? "light" : "dark";
-              applyTheme(nextTheme);
-            }
+          case 'set-theme-light':
+            if (typeof applyTheme === 'function') applyTheme('light');
+            break;
+
+          case 'set-theme-dark':
+            if (typeof applyTheme === 'function') applyTheme('dark');
             break;
 
           case 'set-theme-github':
-            if (typeof applyTheme === 'function') {
-              applyTheme("github");
-            }
+            if (typeof applyTheme === 'function') applyTheme('github');
+            break;
+
+          case 'toggle-theme':
+          case 'toggle-dark-mode':
+            if (typeof cycleTheme === 'function') cycleTheme();
             break;
         }
       });

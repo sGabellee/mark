@@ -275,6 +275,61 @@ body.reading-mode-active #titlebar {
   margin: 3px 4px;
 }
 
+.titlebar-menu-submenu-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.titlebar-submenu-trigger {
+  cursor: pointer;
+}
+
+.titlebar-submenu-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.titlebar-submenu-arrow {
+  font-size: 11px;
+  color: var(--fg);
+  opacity: 0.6;
+}
+
+.titlebar-submenu-content {
+  display: none;
+  position: absolute;
+  top: -4px;
+  left: calc(100% + 2px);
+  min-width: 170px;
+  background-color: var(--card-bg, #ffffff);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  padding: 4px;
+  flex-direction: column;
+  z-index: 10005;
+  box-sizing: border-box;
+}
+
+body.dark .titlebar-submenu-content {
+  background-color: #252526;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+body.theme-github .titlebar-submenu-content {
+  background-color: #161b22;
+  border-color: #30363d;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.titlebar-menu-submenu-wrapper:hover > .titlebar-submenu-content,
+.titlebar-menu-submenu-wrapper:focus-within > .titlebar-submenu-content {
+  display: flex;
+}
+
 .titlebar-center {
   flex: 1 1 auto;
   display: flex;
@@ -1404,7 +1459,7 @@ body.dark {
 html.theme-github,
 body.theme-github {
   --editor-bg: #0d1117;
-  --preview-bg: #0d1117;
+  --preview-bg: #090d13;
   --fg: #e6edf3;
   --code-bg: #161b22;
   --explorer-bg: #010409;
@@ -1412,6 +1467,21 @@ body.theme-github {
   --explorer-hover: #161b22;
   --explorer-active: #1f6feb;
   --explorer-border: #30363d;
+}
+
+body.theme-github #editor,
+body.theme-github #editor-overlay {
+  background-color: #0d1117;
+}
+
+body.theme-github #preview {
+  background-color: #090d13;
+  border-left: 1px solid #30363d;
+}
+
+body.theme-github #container.solo-preview #preview,
+body.theme-github #container.solo-editor #preview {
+  border-left: none !important;
 }
 
 body.theme-github #titlebar {

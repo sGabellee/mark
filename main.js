@@ -417,18 +417,35 @@ function buildApplicationMenu() {
         },
         { type: "separator" },
         {
-          id: 'menu-item-theme-toggle',
-          label: i18n.t("menu_dark_mode"),
-          accelerator: "CmdOrCtrl+M",
-          click: () => {
-            win.webContents.send("toggle-theme");
-          }
-        },
-        {
-          label: i18n.t("menu_github_theme"),
-          click: () => {
-            win.webContents.send("set-theme-github");
-          }
+          label: i18n.t("menu_theme") || "Theme",
+          submenu: [
+            {
+              label: i18n.t("menu_theme_light") || "Light Mode",
+              click: () => {
+                if (win && !win.isDestroyed()) win.webContents.send("set-theme-light");
+              }
+            },
+            {
+              label: i18n.t("menu_theme_dark") || "Dark Mode",
+              click: () => {
+                if (win && !win.isDestroyed()) win.webContents.send("set-theme-dark");
+              }
+            },
+            {
+              label: i18n.t("menu_theme_github") || "GitHub Mode",
+              click: () => {
+                if (win && !win.isDestroyed()) win.webContents.send("set-theme-github");
+              }
+            },
+            { type: "separator" },
+            {
+              label: i18n.t("menu_next_theme") || "Rotate Theme",
+              accelerator: "CmdOrCtrl+M",
+              click: () => {
+                if (win && !win.isDestroyed()) win.webContents.send("toggle-theme");
+              }
+            }
+          ]
         }
       ]
     }

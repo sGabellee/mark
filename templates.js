@@ -1,436 +1,424 @@
 // ====== MARK TEMPLATES MODULE ======
-// Default preloaded templates and user custom template management
+// Built-in templates (no emojis, professional academic/engineering/open-source standards)
+// and user custom templates with category management.
 
-(function (root, factory) {
-  if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
-  } else {
-    root.MarkTemplates = factory();
-  }
-})(typeof self !== 'undefined' ? self : this, function () {
+(function () {
+const DEFAULT_CATEGORIES = [
+  { id: 'academic', label: 'Academic & Reports' },
+  { id: 'notes', label: 'Lecture & Study Notes' },
+  { id: 'github', label: 'GitHub & Software' },
+  { id: 'personal', label: 'Personal' },
+  { id: 'other', label: 'Other' }
+];
 
-  const DEFAULT_TEMPLATES = [
-    {
-      id: 'readme-github',
-      title: 'README GitHub',
-      category: 'github',
-      categoryLabel: 'GitHub & Software',
-      icon: '🚀',
-      badge: 'Ufficiale',
-      description: 'Template completo e professionale per progetti open source su GitHub con badge, quick start, architettura e licenza.',
-      suggestedFilename: 'README.md',
-      content: `# 🚀 Nome del Progetto
+const DEFAULT_TEMPLATES = [
+  {
+    id: 'readme-github',
+    title: 'GitHub README',
+    category: 'github',
+    categoryLabel: 'GitHub & Software',
+    description: 'Standard template based on makeareadme.com for open-source projects with overview, badges, installation, usage, and contributing guidelines.',
+    suggestedFilename: 'README.md',
+    content: `# [Project Name]
 
+A brief description of what this project does and who it's for.
+
+## Badges
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
-[![Platform: Linux | macOS | Windows](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)]()
 
-> Una breve descrizione o tagline accattivante del progetto che spiega chiaramente a cosa serve e perché è utile.
+## Visuals
+Depending on what you are building, include screenshots, architecture diagrams, or an animated demo GIF here.
 
----
-
-## 📌 Indice dei Contenuti
-- [Panoramica](#-panoramica)
-- [Funzionalità Chiave](#-funzionalità-chiave)
-- [Requisiti di Sistema](#-requisiti-di-sistema)
-- [Installazione Rapida](#-installazione-rapida)
-- [Utilizzo ed Esempi](#-utilizzo-ed-esempi)
-- [Struttura del Progetto](#-struttura-del-progetto)
-- [Contribuire](#-contribuire)
-- [Licenza](#-licenza)
-
----
-
-## 📖 Panoramica
-Descrivi in dettaglio il contesto del progetto, gli obiettivi che persegue e i problemi specifici che risolve.
-
-> [!NOTE]
-> Evidenzia qui eventuali note architetturali, avvisi di compatibilità o raccomandazioni preliminari.
-
----
-
-## ✨ Funzionalità Chiave
-- ⚡ **Prestazioni elevate**: ottimizzato per latenza minima e consumo ridotto di risorse.
-- 🎨 **Interfaccia moderna**: design pulito, responsive e accessibile.
-- 🔒 **Privacy by design**: nessun tracciamento non richiesto né telemetria invadente.
-- 🛠 **Estensibile**: architettura modulare predisposta per plugin e personalizzazioni.
-
----
-
-## 🛠 Requisiti di Sistema
-- **Node.js** >= 18.0.0
-- **npm** >= 9.0.0 o **yarn**
-- **Git** installato nel sistema
-
----
-
-## 📦 Installazione Rapida
-
-Clona la repository ed installa le dipendenze:
+## Installation
+Step-by-step instructions to set up the project and install all required dependencies:
 
 \`\`\`bash
-# 1. Clona la repository
-git clone https://github.com/username/nome-progetto.git
+# Clone the repository
+git clone https://github.com/username/project-name.git
 
-# 2. Entra nella cartella di lavoro
-cd nome-progetto
+# Navigate into the project folder
+cd project-name
 
-# 3. Installa le dipendenze di pacchetto
+# Install dependencies
 npm install
 \`\`\`
 
----
-
-## 🚀 Utilizzo ed Esempi
-
-Avvia l'applicazione in modalità sviluppo:
-
-\`\`\`bash
-npm start
-\`\`\`
-
-Per generare i binari di produzione:
-
-\`\`\`bash
-npm run build
-\`\`\`
-
-Esempio di snippet di codice:
+## Usage
+Provide practical examples and common terminal commands or code snippets:
 
 \`\`\`javascript
-import { AppRunner } from './src/index.js';
+import { App } from './src/index.js';
 
-const app = new AppRunner({
-  port: 3000,
-  environment: 'production'
-});
-
-await app.start();
-console.log('Server operativo!');
+const app = new App();
+app.start();
 \`\`\`
 
----
+## Support
+Explain where users and contributors can get help or report issues: open an issue or reach out to the project maintainers.
 
-## 📐 Struttura del Progetto
-\`\`\`text
-├── src/
-│   ├── components/       # Componenti UI
-│   ├── core/             # Logica di business principale
-│   ├── utils/            # Funzioni ausiliarie e helper
-│   └── index.js          # Entry point dell'applicazione
-├── docs/                 # Documentazione dettagliata
-├── tests/                # Suite di test unitari e di integrazione
-├── package.json
-└── README.md
-\`\`\`
+## Roadmap
+Outline planned features and future release goals:
+- [ ] Cross-platform support
+- [ ] Performance optimizations
+- [ ] Extended API integration
 
----
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-## 🤝 Contribuire
-I contributi della community sono sempre benvenuti!
-1. Fai il **Fork** della repository.
-2. Crea un feature branch dedicato (\`git checkout -b feature/nuova-funzionalita\`).
-3. Effettua il commit delle modifiche (\`git commit -m 'Aggiunta nuova funzionalita'\`).
-4. Invia le modifiche sul tuo branch (\`git push origin feature/nuova-funzionalita\`).
-5. Apri una **Pull Request** dettagliata.
+Please ensure to update or add tests as appropriate.
 
----
+## Authors and Acknowledgment
+Acknowledge contributors, original authors, libraries, or organizations that supported the project.
 
-## 📄 Licenza
-Rilasciato sotto licenza [MIT](LICENSE). Consultare il file per maggiori informazioni.
+## License
+[MIT](https://opensource.org/licenses/MIT)
+
+## Project Status
+State whether development is active, completed, in maintenance, or archived.
 `
-    },
-    {
-      id: 'university-report',
-      title: 'Report Universitario',
-      category: 'academic',
-      categoryLabel: 'Università & Report',
-      icon: '🎓',
-      badge: 'Ufficiale',
-      description: 'Struttura accademica completa per relazioni di laboratorio, tesine ed esami universitari con formule KaTeX, tabelle e bibliografia.',
-      suggestedFilename: 'report-accademico.md',
-      content: `# 🏛 Università degli Studi
-### Dipartimento di Ingegneria e Scienze Informatiche
-**Corso di Laurea in Ingegneria Informatica**
+  },
+  {
+    id: 'university-report',
+    title: 'Academic & Lab Report',
+    category: 'academic',
+    categoryLabel: 'Academic & Reports',
+    description: 'Universal university and laboratory report structure featuring abstract, table of contents, methodology, experimental results, and references.',
+    suggestedFilename: 'report_.md',
+    content: `# [Course / Subject Name]
+### Laboratory Report: [Report Title]
+
+**Student:** [First Name Last Name]  
+**Student ID:** [ID / Matricola]  
+**Academic Year:** 2026/2027  
+**Date:** [Submission Date]  
 
 ---
 
-# Titolo della Relazione Accademica
-### Sottotitolo, Progetto di Corso o Laboratorio Sperimentale
-
-**Candidato:** Mario Rossi (Matricola: 0001234567)  
-**Insegnamento:** Sistemi Distribuiti e Architetture Software  
-**Docente:** Prof.ssa Maria Bianchi  
-**Anno Accademico:** 2025/2026 — **Data di consegna:** 15 Novembre 2025  
+## Abstract
+A concise summary of the laboratory activity: primary objectives, methodologies and toolchains used, key experimental findings, and final evaluation.
 
 ---
 
-## 📑 Sommario (Abstract)
-Il presente documento descrive la progettazione, la formalizzazione teorica e l'analisi empirica del sistema realizzato. Viene introdotto il problema dell'ottimizzazione dell'allocazione delle risorse, supportato da una formulazione analitica rigorosa e da una campagna di misurazioni comparative. I risultati sperimentali mostrano una convergenza stabile e un incremento prestazionale del 34% rispetto al metodo convenzionale.
+## Table of Contents
+- [1. Introduction and Objectives](#1-introduction-and-objectives)
+  - [1.1 Background and Requirements](#11-background-and-requirements)
+  - [1.2 Toolchain and Environment](#12-toolchain-and-environment)
+- [2. System Design and Implementation](#2-system-design-and-implementation)
+  - [2.1 Theoretical Framework and Modeling](#21-theoretical-framework-and-modeling)
+  - [2.2 Implementation Details](#22-implementation-details)
+- [3. Experimental Measurements and Validation](#3-experimental-measurements-and-validation)
+  - [3.1 Data Collection and Results](#31-data-collection-and-results)
+  - [3.2 Discussion and Analysis](#32-discussion-and-analysis)
+- [4. Conclusions and Future Work](#4-conclusions-and-future-work)
+- [5. References](#5-references)
 
 ---
 
-## 1. Introduzione e Obiettivi
-La gestione dinamica dei flussi computazionali rappresenta una sfida critica nelle architetture odierne. I principali traguardi perseguiti in questo studio sono:
-1. **Formalizzazione analitica** del comportamento dinamico dei carichi.
-2. **Realizzazione del prototipo** software modulare.
-3. **Validazione empirica** tramite benchmarking su carichi sintetici e realistici.
+## 1. Introduction and Objectives
+General context of the experiment or project, problem statement, and expected deliverables.
 
-> [!NOTE]
-> Tutti i benchmark sono stati condotti in ambiente isolato a temperatura controllata per minimizzare interferenze termiche sul governor della CPU.
+### 1.1 Background and Requirements
+Overview of the target domain, fundamental specifications, and operational constraints:
+- Target platform: [e.g. Hardware platform / Runtime environment]
+- Operating parameters: [e.g. Clock frequency, voltage, memory limits]
+- Functional requirements: [List key functional expectations]
+
+### 1.2 Toolchain and Environment
+Summary of development tools, compilers, simulators, and measurement equipment:
+1. **Design / Modeling Tool:** [e.g. CAD, Simulator, Profiler]
+2. **Build and Compilation Environment:** [e.g. GCC, LLVM, IDE]
+3. **Instrumentation:** [e.g. Oscilloscope, Logic Analyzer, Benchmark Suite]
 
 ---
 
-## 2. Modello Teorico e Formulazione Matematica
-Il bilanciamento del sistema nel dominio continuo è regolato dalla seguente equazione differenziale di stato:
+## 2. System Design and Implementation
+
+### 2.1 Theoretical Framework and Modeling
+Analytical formulation and mathematical derivation of operating parameters:
 
 $$
-\\mathcal{L}(t) = \\sum_{i=1}^{N} w_i \\cdot \\frac{\\partial \\Phi_i}{\\partial t} + \\lambda \\int_0^t \\mathcal{K}(t - \\tau) d\\tau
+f(x) = \\sum_{k=0}^{N-1} a_k \\cdot \\phi_k(x) + \\epsilon
 $$
 
-Dove:
-- $w_i \\in \\mathbb{R}^+$ rappresenta il coefficiente di carico associato al nodo $i$-esimo.
-- $\\Phi_i$ definisce il potenziale istantaneo di saturazione.
-- $\\lambda$ è il parametro di retroazione controllata.
-
-La convergenza asintotica della traiettoria è garantita dal criterio di stabilità:
-
-$$
-\\lim_{t \\to \\infty} \\mathbb{E}\\left[ \\|\\mathbf{x}(t) - \\mathbf{x}^*\\|^2 \\right] = 0
-$$
-
----
-
-## 3. Metodologia Sperimentale
-I test sono stati eseguiti su un cluster eterogeneo di prova. I parametri di configurazione adottati sono riassunti nella tabella sottostante:
-
-| Parametro di Misura | Valore Nominale | Intervallo Testato | Unità |
-| :--- | :--- | :--- | :--- |
-| Nodi operativi attivi | 16 | 4 – 64 | nodi |
-| Dimensione buffer di coda | 1024 | 256 – 4096 | KB |
-| Timeout di risposta ($T_{out}$) | 50 | 10 – 200 | ms |
-| Frequenza di campionamento | 100 | 20 – 500 | Hz |
-
----
-
-## 4. Implementazione Algoritmica
-Di seguito si riporta il core dell'algoritmo sviluppato in Python per l'elaborazione dei flussi:
+### 2.2 Implementation Details
+Key logic flow, algorithms, and modular architectural design:
 
 \`\`\`python
-import numpy as np
-
-def estimate_system_latency(nodes: int, buffer_kb: int, alpha: float = 0.05) -> float:
-    """
-    Stima la latenza attesa del cluster secondo il modello differenziale.
-    """
-    base_latency_ms = 1.25
-    network_overhead = np.log2(nodes) * 0.40
-    queue_delay = (buffer_kb / 1024.0) * alpha
-    
-    total_latency = base_latency_ms + network_overhead + queue_delay
-    return float(total_latency)
-
-# Test con 16 nodi e 2048 KB di buffer
-result = estimate_system_latency(nodes=16, buffer_kb=2048)
-print(f"Latenza teorica calcolata: {result:.3f} ms")
+def process_samples(data_stream):
+    """Filter raw input samples and compute aggregate metrics."""
+    filtered = [x for x in data_stream if validate_sample(x)]
+    return compute_summary(filtered)
 \`\`\`
 
 ---
 
-## 5. Analisi dei Risultati
-I dati raccolti evidenziano una piena rispondenza con le previsioni analitiche:
-- **Throughput:** Aumento del **34.2%** nella regione di saturazione.
-- **Latenza ($P_{99}$):** Mantenuta al di sotto di **15 ms** su 10.000 iterazioni.
-- **Tolleranza ai guasti:** Riconfigurazione autonoma entro **120 ms** dal failure simulato di un nodo.
+## 3. Experimental Measurements and Validation
+
+### 3.1 Data Collection and Results
+Comparison of theoretical expectations versus measured experimental data:
+
+| Metric / Parameter | Nominal / Target | Measured Value | Relative Error (%) | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| Metric A | 100.0 unit | 100.2 unit | +0.20% | Pass |
+| Metric B | 50.0 ms | 49.8 ms | -0.40% | Pass |
+| Metric C | 1.25 V | 1.24 V | -0.80% | Pass |
+
+### 3.2 Discussion and Analysis
+Interpretation of the experimental outcomes, observed deviations, edge cases encountered, and troubleshooting steps performed.
 
 ---
 
-## 6. Conclusioni
-Lo studio ha convalidato la solidità della formulazione proposta. L'architettura sviluppata si è dimostrata robusta, efficiente e facilmente scalabile verso scenari distribuiti su larga scala.
+## 4. Conclusions and Future Work
+Summary of project milestones achieved, alignment with initial objectives, and recommended future optimizations or investigations.
 
 ---
 
-## 📚 Riferimenti Bibliografici
-1. Tanenbaum, A. S., & Van Steen, M. (2017). *Distributed Systems: Principles and Paradigms*. Pearson.
-2. Shannon, C. E. (1948). *A Mathematical Theory of Communication*. Bell System Technical Journal, 27(3), 379–423.
-3. Knuth, D. E. (1997). *The Art of Computer Programming, Volume 1: Fundamental Algorithms*. Addison-Wesley.
+## 5. References
+1. Author, A. (Year). *Title of Document, Manual, or Publication*, Publisher / Organization.
+2. Official Reference Guide and Technical Specifications.
+3. Laboratory Handouts and Lecture Notes.
 `
-    },
-    {
-      id: 'study-notes',
-      title: 'Appunti di Studio',
-      category: 'notes',
-      categoryLabel: 'Appunti & Studio',
-      icon: '📝',
-      badge: 'Ufficiale',
-      description: 'Template per prendere appunti efficaci durante le lezioni o sessioni di studio con box di attenzione, formule, esempi pratici e checklist di ripasso.',
-      suggestedFilename: 'appunti-lezione.md',
-      content: `# 📝 Appunti di Lezione: [Nome Insegnamento]
+  },
+  {
+    id: 'study-notes',
+    title: 'Lecture & Study Notes',
+    category: 'notes',
+    categoryLabel: 'Lecture & Study Notes',
+    description: 'Structured template for lecture and study notes with learning objectives, callout definitions, mathematical formulas, and a revision checklist.',
+    suggestedFilename: 'app_.md',
+    content: `# Lecture Notes: [Subject / Course Name]
 
-**Data della Lezione:** 10 Novembre 2026  
-**Docente:** Prof. [Nome Cognome]  
-**Argomento:** [Titolo dell'Argomento o Capitolo]  
-**Riferimenti bibliografici:** Capitoli 3 & 4 del libro di testo  
+**Lecture Date:** [Date]  
+**Instructor:** Prof. [Name]  
+**Topic:** [Topic or Chapter Title]  
+**Textbook References:** [Chapters / Slide References]  
 
 ---
 
-## 🎯 Obiettivi della Lezione
-- [ ] Comprendere il principio fondamentale dell'argomento.
-- [ ] Saper dimostrare il teorema cardine e i suoi corollari.
-- [ ] Risolvere autonomamente gli esercizi applicativi tipici d'esame.
+## 1. Learning Objectives
+- [ ] Understand the core mechanism and theoretical principles.
+- [ ] Be able to derive and apply the main formula in practice.
+- [ ] Identify constraints, edge cases, and limits of validity.
 
 ---
 
-## 💡 Concetti Chiave & Definizioni
+## 2. Core Concepts and Definitions
 
 > [!NOTE]
-> **Definizione Principale:**  
-> Inserisci qui la definizione fondamentale enunciata a lezione. Utilizza grassetto e formule per evidenziare le variabili critiche.
+> **Key Principle:**  
+> Provide the formal definition introduced during the lecture, emphasizing technical terms.
 
-- **Concetto A:** Spiegazione sintetica ed efficace del primo principio.
-- **Concetto B:** Condizioni di validità e limiti operativi rispetto al caso generale.
-- **Proprietà notevole:** Quando vale l'uguaglianza e quando invece decade.
+- **Concept A:** Definition, scope of application, and significance.
+- **Concept B:** Comparison and contrast with related mechanisms.
+- **Key Term:** Operational context and real-world significance.
 
 ---
 
-## 🔍 Trattazione Dettagliata
+## 3. Detailed Derivation and Analysis
 
-### 1. Fondamenti e Schema Logico
-La dimostrazione procede secondo tre passaggi logici consequenziali:
-1. Definizione dello spazio delle soluzioni ammissibili.
-2. Applicazione della trasformata integrale nello spazio duale.
-3. Verifica della convergenza uniforme.
+### 3.1 Theoretical Foundations
+1. Initial assumptions and boundary conditions.
+2. Intermediate algebraic transformation or reasoning step.
+3. Final resulting theorem and immediate corollaries.
 
-### 2. Formulazione Matematica
-La relazione fondamentale da ricordare per la prova scritta è la seguente:
+### 3.2 Mathematical Formulation
+Fundamental relation derived during class:
 
 $$
 F(\\omega) = \\int_{-\\infty}^{+\\infty} f(t) e^{-j \\omega t} dt
 $$
 
-Proprietà essenziali:
-- **Linearità:** $\\mathcal{F}\\{\\alpha f(t) + \\beta g(t)\\} = \\alpha F(\\omega) + \\beta G(\\omega)$
-- **Traslazione temporale:** $\\mathcal{F}\\{f(t - t_0)\\} = e^{-j \\omega t_0} F(\\omega)$
+Key properties:
+- **Linearity:** $\\mathcal{F}\\{\\alpha f(t) + \\beta g(t)\\} = \\alpha F(\\omega) + \\beta G(\\omega)$
+- **Duality:** Holds under absolute integrability and convergence criteria.
 
 ---
 
-## ⚠️ Attenzione: Errori Tipici d'Esame
-> [!WARNING]
-> Ricorda di verificare sempre l'integrabilità assoluta prima di applicare il teorema di inversione! Il professore penalizza severamente la mancata verifica di questa ipotesi.
+## 4. Practical Examples and Exam Questions
+
+**Typical Exam Question:**  
+*How does the system behavior change when the fundamental parameter varies?*
+
+**Model Solution:**  
+Step-by-step analytical explanation and asymptotic discussion.
 
 ---
 
-## 🧪 Esempi Pratici & Domande d'Esame
-
-**Domanda d'esame frequente:**  
-*Come varia lo spettro del segnale se la durata temporale dell'impulso viene dimezzata?*
-
-**Risposta modello:**  
-In virtù del principio di indeterminazione tempo-banda, il dimezzamento della durata temporale determina un **raddoppio della larghezza di banda** nello spazio delle frequenze con ampiezza riscalata di un fattore pari a $1/2$.
-
----
-
-## 📌 Mappa di Sintesi Rapida
-\`\`\`text
-Problema Principale
-  ├── Ipotesi 1 ──> Risultato A (Caso canonico)
-  └── Ipotesi 2 ──> Risultato B (Caso limite / Singolarità)
-\`\`\`
-
----
-
-## ✅ Checklist di Studio & Da Fare
-- [ ] Rileggere gli appunti ed integrare con le slide della lezione.
-- [ ] Rifare l'esercizio #3 senza consultare lo svolgimento.
-- [ ] Chiedere chiarimenti al docente durante il ricevimento sul corollario 2.
-- [ ] Realizzare la scheda riassuntiva delle formule per il ripasso finale.
+## 5. Study and Review Checklist
+- [ ] Review lecture notes alongside corresponding slides.
+- [ ] Re-solve the class example without referring to the notes.
+- [ ] Clarify any open questions during office hours.
+- [ ] Construct a summary mindmap or cheat-sheet for this topic.
 `
-    }
-  ];
-
-  const STORAGE_KEY = 'mark.customTemplates';
-
-  function getCustomTemplates() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      console.error('[MarkTemplates] Error reading custom templates:', e);
-      return [];
-    }
   }
+];
 
-  function saveCustomTemplate({ id, title, category, description, content }) {
-    if (!title || !title.trim()) {
-      throw new Error('Il titolo del template è obbligatorio');
+const STORAGE_TEMPLATES_KEY = 'mark.customTemplates';
+const STORAGE_CATEGORIES_KEY = 'mark.customTemplateCategories';
+
+function getCategories() {
+  try {
+    if (typeof localStorage === 'undefined') return [...DEFAULT_CATEGORIES];
+    const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY);
+    const custom = raw ? JSON.parse(raw) : [];
+    const combined = [...DEFAULT_CATEGORIES];
+    if (Array.isArray(custom)) {
+      custom.forEach(c => {
+        if (c && c.id && !combined.some(x => x.id === c.id)) {
+          combined.push(c);
+        }
+      });
     }
-    const templates = getCustomTemplates();
-    const templateId = id || ('custom-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5));
-    
-    const catMap = {
-      academic: 'Università & Report',
-      notes: 'Appunti & Studio',
-      github: 'GitHub & Software',
-      personal: 'Personale',
-      other: 'Altro'
-    };
-
-    const newTemplate = {
-      id: templateId,
-      title: title.trim(),
-      category: category || 'personal',
-      categoryLabel: catMap[category] || 'Personalizzato',
-      icon: category === 'academic' ? '🎓' : (category === 'github' ? '🚀' : (category === 'notes' ? '📝' : '⭐')),
-      badge: 'Mio Template',
-      description: (description || '').trim() || 'Template personalizzato creato dall\'utente.',
-      suggestedFilename: (title.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-') || 'template') + '.md',
-      content: content || '',
-      isCustom: true,
-      updatedAt: Date.now()
-    };
-
-    const existingIndex = templates.findIndex(t => t.id === templateId);
-    if (existingIndex >= 0) {
-      templates[existingIndex] = newTemplate;
-    } else {
-      templates.unshift(newTemplate);
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-    return newTemplate;
+    return combined;
+  } catch (e) {
+    console.error('[MarkTemplates] Error reading categories:', e);
+    return [...DEFAULT_CATEGORIES];
   }
+}
 
-  function deleteCustomTemplate(id) {
-    if (!id) return false;
-    let templates = getCustomTemplates();
-    const beforeLen = templates.length;
-    templates = templates.filter(t => t.id !== id);
-    if (templates.length !== beforeLen) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-      return true;
-    }
-    return false;
+function addCategory(label) {
+  if (!label || !label.trim()) return null;
+  const cleanLabel = label.trim();
+  const id = 'cat-' + cleanLabel.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-');
+  
+  const categories = getCategories();
+  const existing = categories.find(c => c.id === id || c.label.toLowerCase() === cleanLabel.toLowerCase());
+  if (existing) return existing;
+
+  const newCat = { id, label: cleanLabel, isCustom: true };
+  try {
+    const raw = localStorage.getItem(STORAGE_CATEGORIES_KEY);
+    const custom = raw ? JSON.parse(raw) : [];
+    custom.push(newCat);
+    localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(custom));
+  } catch (e) {
+    console.error('[MarkTemplates] Error saving category:', e);
   }
+  return newCat;
+}
 
-  function getAllTemplates() {
-    const custom = getCustomTemplates();
-    return [...DEFAULT_TEMPLATES, ...custom];
+function getCustomTemplates() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(STORAGE_TEMPLATES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('[MarkTemplates] Error reading custom templates:', e);
+    return [];
   }
+}
 
-  function getTemplateById(id) {
-    if (!id) return null;
-    return getAllTemplates().find(t => t.id === id) || null;
+function saveCustomTemplate({ id, title, category, description, content }) {
+  if (!title || !title.trim()) {
+    throw new Error('Il titolo del template è obbligatorio');
   }
+  const templates = getCustomTemplates();
+  const templateId = id || ('custom-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5));
+  
+  const allCats = getCategories();
+  const foundCat = allCats.find(c => c.id === category);
+  const categoryLabel = foundCat ? foundCat.label : (category || 'Personale');
 
-  return {
-    DEFAULT_TEMPLATES,
-    getCustomTemplates,
-    saveCustomTemplate,
-    deleteCustomTemplate,
-    getAllTemplates,
-    getTemplateById
+  const cleanFilename = (title.toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_') || 'template') + '.md';
+
+  const newTemplate = {
+    id: templateId,
+    title: title.trim(),
+    category: category || 'personal',
+    categoryLabel: categoryLabel,
+    badge: 'Mio Template',
+    description: (description || '').trim() || 'Template personalizzato salvato dall\'utente.',
+    suggestedFilename: cleanFilename,
+    content: content || '',
+    isCustom: true,
+    updatedAt: Date.now()
   };
-});
+
+  const existingIndex = templates.findIndex(t => t.id === templateId);
+  if (existingIndex >= 0) {
+    templates[existingIndex] = newTemplate;
+  } else {
+    templates.unshift(newTemplate);
+  }
+
+  localStorage.setItem(STORAGE_TEMPLATES_KEY, JSON.stringify(templates));
+  return newTemplate;
+}
+
+function updateCustomTemplate(id, data) {
+  if (!id) return null;
+  const templates = getCustomTemplates();
+  const idx = templates.findIndex(t => t.id === id);
+  if (idx < 0) return null;
+
+  const existing = templates[idx];
+  const allCats = getCategories();
+  const catId = data.category || existing.category;
+  const foundCat = allCats.find(c => c.id === catId);
+  const categoryLabel = foundCat ? foundCat.label : (data.categoryLabel || existing.categoryLabel);
+
+  const updated = {
+    ...existing,
+    title: data.title !== undefined ? data.title.trim() : existing.title,
+    category: catId,
+    categoryLabel: categoryLabel,
+    description: data.description !== undefined ? data.description.trim() : existing.description,
+    content: data.content !== undefined ? data.content : existing.content,
+    updatedAt: Date.now()
+  };
+
+  templates[idx] = updated;
+  localStorage.setItem(STORAGE_TEMPLATES_KEY, JSON.stringify(templates));
+  return updated;
+}
+
+function deleteCustomTemplate(id) {
+  if (!id) return false;
+  let templates = getCustomTemplates();
+  const beforeLen = templates.length;
+  templates = templates.filter(t => t.id !== id);
+  if (templates.length !== beforeLen) {
+    localStorage.setItem(STORAGE_TEMPLATES_KEY, JSON.stringify(templates));
+    return true;
+  }
+  return false;
+}
+
+function getAllTemplates() {
+  const custom = getCustomTemplates();
+  return [...DEFAULT_TEMPLATES, ...custom];
+}
+
+function getTemplateById(id) {
+  if (!id) return null;
+  return getAllTemplates().find(t => t.id === id) || null;
+}
+
+const MarkTemplates = {
+  DEFAULT_CATEGORIES,
+  DEFAULT_TEMPLATES,
+  getCategories,
+  addCategory,
+  getCustomTemplates,
+  saveCustomTemplate,
+  updateCustomTemplate,
+  deleteCustomTemplate,
+  getAllTemplates,
+  getTemplateById
+};
+
+// Guarantee availability in both Browser window and Node.js module context
+if (typeof window !== 'undefined') {
+  window.MarkTemplates = MarkTemplates;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.MarkTemplates = MarkTemplates;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = MarkTemplates;
+}
+})();

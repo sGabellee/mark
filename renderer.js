@@ -2,8 +2,10 @@
 const i18n = require("./i18n.js");
 const savedTheme = localStorage.getItem('mark-theme') || 'light'; 
 if (savedTheme === 'dark') {
+  document.documentElement.classList.add('dark');
   document.body.classList.add('dark');
 } else {
+  document.documentElement.classList.remove('dark');
   document.body.classList.remove('dark');
 }
 
@@ -31,6 +33,7 @@ const {
   getCollabState
 } = require("./collaboration.js");
 const { buildExportHtml } = require("./html-export.js");
+const MarkTemplates = (typeof window !== 'undefined' && window.MarkTemplates) || (typeof require === 'function' ? require('./templates.js') : null);
 
 // ====== UTILS PRECOCI ======
 function escapeHtml(s) { 
@@ -987,6 +990,102 @@ function updateOnlineStatus() {
 // ====== DOM READY ===========================================================
 window.addEventListener("DOMContentLoaded", () => {
 
+  // ===== IN-APP CUSTOM CONFIRM / ALERT MODAL (MARK NATIVE DESIGN) =====
+  let currentConfirmResolver = null;
+  let currentCancelValue = false;
+
+  const CONFIRM_ICONS = {
+    warning: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    question: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    info: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+  };
+
+  function closeCustomConfirmDialog(value = false) {
+    const modal = document.getElementById('app-confirm-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+    if (typeof currentConfirmResolver === 'function') {
+      const resolver = currentConfirmResolver;
+      currentConfirmResolver = null;
+      resolver(value);
+    }
+  }
+
+  function showCustomConfirmDialog(options = {}) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('app-confirm-modal');
+      const titleEl = document.getElementById('app-confirm-title');
+      const messageEl = document.getElementById('app-confirm-message');
+      const iconBox = document.getElementById('app-confirm-icon-box');
+      const actionsEl = document.getElementById('app-confirm-actions');
+
+      if (!modal) {
+        resolve(options.defaultValue !== undefined ? options.defaultValue : false);
+        return;
+      }
+
+      currentConfirmResolver = resolve;
+
+      if (titleEl) {
+        titleEl.textContent = options.title || (typeof i18n !== 'undefined' ? i18n.t('confirm') : 'Confirm') || 'Confirm';
+      }
+      if (messageEl) {
+        messageEl.textContent = options.message || '';
+      }
+
+      const iconType = options.icon || (options.type === 'question' ? 'question' : options.type === 'info' ? 'info' : 'warning');
+      if (iconBox) {
+        iconBox.className = `app-confirm-icon-box ${iconType}`;
+        iconBox.innerHTML = CONFIRM_ICONS[iconType] || CONFIRM_ICONS.warning;
+      }
+
+      const buttons = options.buttons || [
+        { text: options.cancelText || (typeof i18n !== 'undefined' ? i18n.t('dialog_cancel') : 'Cancel') || 'Cancel', value: false, isCancel: true },
+        { text: options.okText || (typeof i18n !== 'undefined' ? i18n.t('confirm') : 'OK') || 'OK', value: true, isPrimary: true, isDanger: !!options.isDanger }
+      ];
+
+      const cancelBtnConfig = buttons.find(b => b.isCancel) || buttons[buttons.length - 1];
+      currentCancelValue = cancelBtnConfig ? cancelBtnConfig.value : false;
+
+      if (actionsEl) {
+        actionsEl.innerHTML = '';
+        buttons.forEach((btnConfig, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = btnConfig.text;
+          if (btnConfig.isDanger) {
+            btn.className = 'app-confirm-btn-danger';
+          } else if (btnConfig.isPrimary) {
+            btn.className = 'app-confirm-btn-primary';
+          } else if (btnConfig.isSecondary) {
+            btn.className = 'app-confirm-btn-secondary';
+          } else {
+            btn.className = 'app-confirm-btn-cancel';
+          }
+          btn.addEventListener('click', () => {
+            closeCustomConfirmDialog(btnConfig.value);
+          });
+          actionsEl.appendChild(btn);
+          if (btnConfig.isPrimary || (!buttons.some(b => b.isPrimary) && idx === 0)) {
+            setTimeout(() => { try { btn.focus(); } catch (e) {} }, 40);
+          }
+        });
+      }
+
+      modal.classList.remove('hidden');
+    });
+  }
+
+  const btnCloseAppConfirmEarly = document.getElementById('btn-close-app-confirm');
+  if (btnCloseAppConfirmEarly) {
+    btnCloseAppConfirmEarly.addEventListener('click', () => closeCustomConfirmDialog(currentCancelValue));
+  }
+  const appConfirmOverlayEarly = document.getElementById('app-confirm-overlay');
+  if (appConfirmOverlayEarly) {
+    appConfirmOverlayEarly.addEventListener('click', () => closeCustomConfirmDialog(currentCancelValue));
+  }
+
   // ===== TREE SVG ICONS (FILLED) =====
   const FOLDER_CHEVRON_SVG = `<svg class="tree-chevron-icon" width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
   const FOLDER_SVG = `<svg class="tree-item-icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
@@ -1382,17 +1481,22 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function getMarkTemplatesHelper() {
+    return (typeof window !== 'undefined' && window.MarkTemplates) || (typeof require === 'function' ? require('./templates.js') : null);
+  }
+
   function promptCreateFileWithTemplate(templateId) {
     if (!confirmLeaveCollabIfActive('action_create_new')) {
       return;
     }
 
+    const tplModule = getMarkTemplatesHelper();
     let template = null;
-    if (templateId && templateId !== 'blank' && window.MarkTemplates) {
-      template = window.MarkTemplates.getTemplateById(templateId);
+    if (templateId && templateId !== 'blank' && tplModule) {
+      template = tplModule.getTemplateById(templateId);
     }
     const defaultContent = template ? template.content : '';
-    const suggestedName = template ? (template.suggestedFilename || (template.title.toLowerCase().replace(/[^a-z0-9_-]/g, '-') + '.md')) : 'nuovo-file.md';
+    const suggestedName = template ? (template.suggestedFilename || (template.title.toLowerCase().replace(/[^a-z0-9_-]/g, '_') + '.md')) : 'nuovo-file.md';
 
     if (!currentFolderPath) {
       if (typeof createNewTab === 'function') {
@@ -1469,12 +1573,18 @@ window.addEventListener("DOMContentLoaded", () => {
     if (shouldOpen) {
       const customSection = document.getElementById('new-file-popup-custom-section');
       const customList = document.getElementById('new-file-popup-custom-list');
-      if (customSection && customList && window.MarkTemplates) {
-        const customs = window.MarkTemplates.getCustomTemplates();
+      const tplModule = getMarkTemplatesHelper();
+      if (customSection && customList && tplModule) {
+        const customs = tplModule.getCustomTemplates();
         if (customs.length > 0) {
           customList.innerHTML = customs.slice(0, 5).map(t => `
             <button type="button" class="new-file-popup-item" data-template-id="${escapeHtml(t.id)}">
-              <span class="new-file-popup-icon">${t.icon || '⭐'}</span>
+              <span class="new-file-popup-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </span>
               <div class="new-file-popup-text">
                 <span class="new-file-popup-title">${escapeHtml(t.title)}</span>
                 <span class="new-file-popup-desc">${escapeHtml(t.description || t.categoryLabel || '')}</span>
@@ -5245,7 +5355,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   let isClosingTab = false;
 
-  function closeTab(tabId) {
+  async function closeTab(tabId) {
     if (isClosingTab) return false;
     const tabIndex = tabs.findIndex(t => t.id === tabId);
     if (tabIndex === -1) return true;
@@ -5265,13 +5375,16 @@ window.addEventListener("DOMContentLoaded", () => {
       const messageText = i18n.t('dialog_unsaved_tab_message', { name: tab.title }) ||
         `Do you want to save the changes you made to "${tab.title}"?`;
 
-      const answer = dialog.showMessageBoxSync({
+      const answer = await showCustomConfirmDialog({
         type: 'question',
-        buttons: [i18n.t('dialog_save'), i18n.t('dialog_dont_save'), i18n.t('dialog_cancel')],
-        defaultId: 0,
-        cancelId: 2,
-        title: i18n.t('dialog_unsaved_title'),
-        message: messageText
+        icon: 'question',
+        title: i18n.t('dialog_unsaved_title') || 'Unsaved changes',
+        message: messageText,
+        buttons: [
+          { text: i18n.t('dialog_save') || 'Save', value: 0, isPrimary: true },
+          { text: i18n.t('dialog_dont_save') || "Don't Save", value: 1, isSecondary: true },
+          { text: i18n.t('dialog_cancel') || 'Cancel', value: 2, isCancel: true }
+        ]
       });
 
       if (answer === 0) { // Save
@@ -5629,13 +5742,15 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!filePath || !fs.existsSync(filePath)) return;
     const fileName = path.basename(filePath);
 
-    const answer = dialog.showMessageBoxSync({
+    const answer = await showCustomConfirmDialog({
       type: 'warning',
-      buttons: [i18n.t('dialog_move_to_trash') || 'Move to Trash', i18n.t('dialog_cancel') || 'Cancel'],
-      defaultId: 0,
-      cancelId: 1,
+      icon: 'warning',
       title: i18n.t('dialog_delete_title') || 'Move to Trash',
-      message: i18n.t('dialog_delete_confirm', { name: fileName }) || `Are you sure you want to move "${fileName}" to Trash?`
+      message: i18n.t('dialog_delete_confirm', { name: fileName }) || `Are you sure you want to move "${fileName}" to Trash?`,
+      buttons: [
+        { text: i18n.t('dialog_cancel') || 'Cancel', value: 1, isCancel: true },
+        { text: i18n.t('dialog_move_to_trash') || 'Move to Trash', value: 0, isDanger: true }
+      ]
     });
 
     if (answer !== 0) return;
@@ -6276,8 +6391,10 @@ window.addEventListener("DOMContentLoaded", () => {
   // Gestione Tema (Chiaro / Scuro) con selettore a tab
   function applyTheme(theme) {
     if (theme === "dark") {
+      document.documentElement.classList.add("dark");
       document.body.classList.add("dark");
     } else {
+      document.documentElement.classList.remove("dark");
       document.body.classList.remove("dark");
     }
     localStorage.setItem("mark-theme", theme);
@@ -6690,35 +6807,55 @@ window.addEventListener("DOMContentLoaded", () => {
     showNotification(i18n.t('notif_session_ended'), "info");
   });
 
+  let isAppForceClosing = false;
+
+  async function handleAppCloseRequest() {
+    if (typeof saveStateForActiveTab === 'function') {
+      saveStateForActiveTab();
+    }
+    const dirtyTabs = tabs.filter(t => t.isDirty);
+    for (const t of dirtyTabs) {
+      switchToTab(t.id);
+      const answer = await showCustomConfirmDialog({
+        type: 'question',
+        icon: 'question',
+        title: i18n.t('dialog_unsaved_title') || 'Unsaved changes',
+        message: i18n.t('dialog_unsaved_tab_message', { name: t.title }) || `Do you want to save the changes you made to "${t.title}"?`,
+        buttons: [
+          { text: i18n.t('dialog_save') || 'Save', value: 0, isPrimary: true },
+          { text: i18n.t('dialog_dont_save') || "Don't Save", value: 1, isSecondary: true },
+          { text: i18n.t('dialog_cancel') || 'Cancel', value: 2, isCancel: true }
+        ]
+      });
+
+      if (answer === 0) {
+        const saved = saveSpecificTab(t);
+        if (!saved) return false;
+      } else if (answer === 1) {
+        t.isDirty = false;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+
   window.addEventListener('beforeunload', (e) => {
+    if (isAppForceClosing) return;
     if (typeof saveStateForActiveTab === 'function') {
       saveStateForActiveTab();
     }
     const dirtyTabs = tabs.filter(t => t.isDirty);
     if (dirtyTabs.length > 0) {
-      for (const t of dirtyTabs) {
-        switchToTab(t.id);
-        const choice = dialog.showMessageBoxSync({
-          type: 'question',
-          buttons: [i18n.t('dialog_save'), i18n.t('dialog_dont_save'), i18n.t('dialog_cancel')],
-          defaultId: 0,
-          cancelId: 2,
-          title: i18n.t('dialog_unsaved_title'),
-          message: i18n.t('dialog_unsaved_tab_message', { name: t.title }) || `Do you want to save the changes you made to "${t.title}"?`
-        });
-        if (choice === 0) {
-          const saved = saveSpecificTab(t);
-          if (!saved) {
-            e.preventDefault();
-            e.returnValue = false;
-            return false;
-          }
-        } else if (choice === 2) {
-          e.preventDefault();
-          e.returnValue = false;
-          return false;
+      e.preventDefault();
+      e.returnValue = false;
+      handleAppCloseRequest().then(canClose => {
+        if (canClose) {
+          isAppForceClosing = true;
+          ipcRenderer.send('window-close-confirmed');
         }
-      }
+      });
+      return false;
     }
     if (getCollabState().isActive) {
       leaveCollaboration();
@@ -6785,7 +6922,30 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const appConfirmModal = document.getElementById('app-confirm-modal');
+      if (appConfirmModal && !appConfirmModal.classList.contains('hidden')) {
+        const primaryBtn = appConfirmModal.querySelector('.app-confirm-btn-primary');
+        if (primaryBtn) {
+          e.preventDefault();
+          primaryBtn.click();
+          return;
+        }
+      }
+    }
+
     if (e.key === 'Escape') {
+      const appConfirmModal = document.getElementById('app-confirm-modal');
+      if (appConfirmModal && !appConfirmModal.classList.contains('hidden')) {
+        if (typeof closeCustomConfirmDialog === 'function') {
+          closeCustomConfirmDialog(currentCancelValue);
+        } else {
+          appConfirmModal.classList.add('hidden');
+        }
+        e.preventDefault();
+        return;
+      }
+
       if (currentCalloutPicker) {
         closeCalloutColorPicker();
         e.preventDefault();
@@ -6827,6 +6987,20 @@ window.addEventListener("DOMContentLoaded", () => {
         settingsModal.classList.add('hidden');
         e.preventDefault(); // Evita che il tasto ESC provochi altri comportamenti nell'editor
       }
+    }
+
+    // Shortcut Ctrl+T: Scegli template
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 't' || e.key === 'T')) {
+      e.preventDefault();
+      if (typeof openTemplateGallery === 'function') openTemplateGallery();
+      return;
+    }
+
+    // Shortcut Ctrl+Shift+T: Salva come template
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && (e.key === 't' || e.key === 'T')) {
+      e.preventDefault();
+      if (typeof openSaveTemplateModal === 'function') openSaveTemplateModal();
+      return;
     }
   }, true); 
   
@@ -7306,6 +7480,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // =========================================================
   // TEMPLATE SYSTEM (OVERLEAF STYLE) & CUSTOM TEMPLATES
   // =========================================================
+
   let currentTemplateCategory = 'all';
   let currentTemplateSearch = '';
   let activePreviewedTemplateId = null;
@@ -7321,10 +7496,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const templateCardsGrid = document.getElementById('template-cards-grid');
   const templateCurrentCategoryTitle = document.getElementById('template-current-category-title');
   const templateVisibleCount = document.getElementById('template-visible-count');
+  const templateCustomCategoriesSidebar = document.getElementById('template-custom-categories-sidebar');
 
   // Preview Drawer DOM
   const templatePreviewDrawer = document.getElementById('template-preview-drawer');
+  const templatePreviewResizer = document.getElementById('template-preview-resizer');
   const btnCloseTemplatePreview = document.getElementById('btn-close-template-preview');
+  const btnToggleExpandPreview = document.getElementById('btn-toggle-expand-preview');
+  const iconExpandPreview = document.getElementById('icon-expand-preview');
   const btnPreviewRendered = document.getElementById('btn-preview-rendered');
   const btnPreviewSource = document.getElementById('btn-preview-source');
   const btnUsePreviewedTemplate = document.getElementById('btn-use-previewed-template');
@@ -7334,20 +7513,27 @@ window.addEventListener("DOMContentLoaded", () => {
   const previewTemplateTitle = document.getElementById('preview-template-title');
   const previewTemplateDesc = document.getElementById('preview-template-desc');
 
-  // Save Template Modal DOM
+  // Save / Edit Template Modal DOM
   const saveTemplateModal = document.getElementById('save-template-modal');
   const saveTemplateOverlay = document.getElementById('save-template-overlay');
+  const saveTemplateModalTitle = document.getElementById('save-template-modal-title');
+  const saveTemplateEditId = document.getElementById('save-template-edit-id');
   const btnCloseSaveTemplate = document.getElementById('btn-close-save-template');
   const btnCancelSaveTemplate = document.getElementById('btn-cancel-save-template');
   const btnConfirmSaveTemplate = document.getElementById('btn-confirm-save-template');
   const saveTemplateTitleInput = document.getElementById('save-template-title');
   const saveTemplateCategorySelect = document.getElementById('save-template-category');
+  const btnToggleNewCategory = document.getElementById('btn-toggle-new-category');
+  const saveTemplateNewCategoryBox = document.getElementById('save-template-new-category-box');
+  const saveTemplateNewCategoryInput = document.getElementById('save-template-new-category-input');
   const saveTemplateDescInput = document.getElementById('save-template-desc');
 
   // Explorer New File Popup DOM
   const newFilePopup = document.getElementById('new-file-popup');
   const btnCloseNewFilePopup = document.getElementById('btn-close-new-file-popup');
   const btnPopupBrowseAll = document.getElementById('btn-popup-browse-all');
+
+
 
   function openTemplateGallery(category = 'all') {
     if (!templateGalleryModal) return;
@@ -7356,6 +7542,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (templateSearchInput) templateSearchInput.value = '';
     if (templateSearchClear) templateSearchClear.classList.add('hidden');
 
+    renderSidebarCategories();
     switchGalleryCategory(currentTemplateCategory);
     templateGalleryModal.classList.remove('hidden');
     closeTemplatePreview();
@@ -7369,6 +7556,32 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!templateGalleryModal) return;
     templateGalleryModal.classList.add('hidden');
     closeTemplatePreview();
+  }
+
+  function populateCategoryDropdown(selectedId) {
+    if (!saveTemplateCategorySelect || !MarkTemplates) return;
+    const cats = MarkTemplates.getCategories();
+    saveTemplateCategorySelect.innerHTML = cats.map(c => `
+      <option value="${escapeHtml(c.id)}" ${c.id === selectedId ? 'selected' : ''}>${escapeHtml(c.label)}</option>
+    `).join('');
+  }
+
+  function renderSidebarCategories() {
+    if (!templateCustomCategoriesSidebar || !MarkTemplates) return;
+    const allCats = MarkTemplates.getCategories();
+    const customCats = allCats.filter(c => c.isCustom);
+    if (customCats.length === 0) {
+      templateCustomCategoriesSidebar.innerHTML = '';
+      return;
+    }
+    templateCustomCategoriesSidebar.innerHTML = customCats.map(c => `
+      <button type="button" class="template-nav-btn ${currentTemplateCategory === c.id ? 'active' : ''}" data-category="${escapeHtml(c.id)}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>${escapeHtml(c.label)}</span>
+      </button>
+    `).join('');
   }
 
   function openSaveTemplateModal() {
@@ -7388,12 +7601,41 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    if (saveTemplateModalTitle) saveTemplateModalTitle.textContent = i18n.t('template_save_modal_title') || 'Salva come Template';
+    if (saveTemplateEditId) saveTemplateEditId.value = '';
+    if (btnConfirmSaveTemplate) btnConfirmSaveTemplate.textContent = i18n.t('save') || 'Salva Template';
+
+    populateCategoryDropdown('personal');
+    if (saveTemplateTitleInput) saveTemplateTitleInput.value = initialTitle;
+    if (saveTemplateDescInput) saveTemplateDescInput.value = '';
+    if (saveTemplateNewCategoryBox) saveTemplateNewCategoryBox.classList.add('hidden');
+    if (saveTemplateNewCategoryInput) saveTemplateNewCategoryInput.value = '';
+
+    saveTemplateModal.classList.remove('hidden');
     if (saveTemplateTitleInput) {
-      saveTemplateTitleInput.value = initialTitle;
+      setTimeout(() => {
+        saveTemplateTitleInput.focus();
+        saveTemplateTitleInput.select();
+      }, 80);
     }
-    if (saveTemplateDescInput) {
-      saveTemplateDescInput.value = '';
-    }
+  }
+
+  function openEditTemplateModal(templateId) {
+    if (!MarkTemplates || !saveTemplateModal) return;
+    const template = MarkTemplates.getTemplateById(templateId);
+    if (!template) return;
+
+    if (saveTemplateModalTitle) saveTemplateModalTitle.textContent = 'Modifica Template';
+    if (saveTemplateEditId) saveTemplateEditId.value = templateId;
+    if (btnConfirmSaveTemplate) btnConfirmSaveTemplate.textContent = 'Aggiorna Template';
+
+    populateCategoryDropdown(template.category);
+    if (saveTemplateTitleInput) saveTemplateTitleInput.value = template.title || '';
+    if (saveTemplateCategorySelect) saveTemplateCategorySelect.value = template.category || 'personal';
+    if (saveTemplateDescInput) saveTemplateDescInput.value = template.description || '';
+    if (saveTemplateNewCategoryBox) saveTemplateNewCategoryBox.classList.add('hidden');
+    if (saveTemplateNewCategoryInput) saveTemplateNewCategoryInput.value = '';
+
     saveTemplateModal.classList.remove('hidden');
     if (saveTemplateTitleInput) {
       setTimeout(() => {
@@ -7410,9 +7652,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function switchGalleryCategory(catName) {
     currentTemplateCategory = catName;
-    templateNavBtns.forEach(btn => {
+    document.querySelectorAll('.template-nav-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.category === catName);
     });
+
     const labelMap = {
       all: i18n.t('template_all') || 'Tutti i template',
       official: i18n.t('template_official') || 'Predefiniti',
@@ -7421,20 +7664,97 @@ window.addEventListener("DOMContentLoaded", () => {
       academic: i18n.t('template_cat_academic') || 'Università & Report',
       notes: i18n.t('template_cat_notes') || 'Appunti & Studio'
     };
+
     if (templateCurrentCategoryTitle) {
-      templateCurrentCategoryTitle.textContent = labelMap[catName] || catName;
+      if (labelMap[catName]) {
+        templateCurrentCategoryTitle.textContent = labelMap[catName];
+      } else if (MarkTemplates) {
+        const found = MarkTemplates.getCategories().find(c => c.id === catName);
+        templateCurrentCategoryTitle.textContent = found ? found.label : catName;
+      }
     }
     renderTemplateCards();
   }
 
+  function generateMiniSheet(t) {
+    if (t.id === 'readme-github') {
+      return `
+        <div class="sheet-mini-title"></div>
+        <div class="sheet-mini-sub"></div>
+        <div class="sheet-mini-badges">
+          <span class="sheet-mini-badge"></span>
+          <span class="sheet-mini-badge"></span>
+          <span class="sheet-mini-badge"></span>
+        </div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-code">
+          <div class="sheet-mini-line w-60"></div>
+          <div class="sheet-mini-line w-40"></div>
+        </div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+      `;
+    }
+    if (t.id === 'university-report') {
+      return `
+        <div style="text-align:center; display:flex; flex-direction:column; align-items:center;">
+          <div class="sheet-mini-title" style="width:75%;"></div>
+          <div class="sheet-mini-sub" style="width:45%;"></div>
+        </div>
+        <div class="sheet-mini-line w-full" style="opacity:0.4;"></div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-math"></div>
+        <div class="sheet-mini-table">
+          <div class="sheet-mini-line w-full"></div>
+          <div class="sheet-mini-line w-full" style="opacity:0.15;"></div>
+        </div>
+        <div class="sheet-mini-cols">
+          <div class="sheet-mini-col"><div class="sheet-mini-line w-full"></div><div class="sheet-mini-line w-60"></div></div>
+          <div class="sheet-mini-col"><div class="sheet-mini-line w-full"></div><div class="sheet-mini-line w-80"></div></div>
+        </div>
+      `;
+    }
+    if (t.id === 'study-notes') {
+      return `
+        <div class="sheet-mini-title" style="width:85%;"></div>
+        <div class="sheet-mini-sub" style="width:50%;"></div>
+        <div class="sheet-mini-box">
+          <div class="sheet-mini-line w-full"></div>
+          <div class="sheet-mini-line w-80"></div>
+        </div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-60"></div>
+        <div class="sheet-mini-math"></div>
+        <div class="sheet-mini-line w-full"></div>
+        <div class="sheet-mini-line w-80"></div>
+        <div class="sheet-mini-line w-40"></div>
+      `;
+    }
+    return `
+      <div class="sheet-mini-title" style="width:80%;"></div>
+      <div class="sheet-mini-sub" style="width:45%;"></div>
+      <div class="sheet-mini-line w-full"></div>
+      <div class="sheet-mini-line w-80"></div>
+      <div class="sheet-mini-line w-full"></div>
+      <div class="sheet-mini-line w-60"></div>
+      <div class="sheet-mini-code">
+        <div class="sheet-mini-line w-80"></div>
+      </div>
+      <div class="sheet-mini-line w-full"></div>
+      <div class="sheet-mini-line w-40"></div>
+    `;
+  }
+
   function renderTemplateCards() {
-    if (!templateCardsGrid || !window.MarkTemplates) return;
+    if (!templateCardsGrid || !MarkTemplates) return;
 
-    const allTemplates = window.MarkTemplates.getAllTemplates();
-    const officialTemplates = window.MarkTemplates.DEFAULT_TEMPLATES;
-    const customTemplates = window.MarkTemplates.getCustomTemplates();
+    const allTemplates = MarkTemplates.getAllTemplates();
+    const officialTemplates = MarkTemplates.DEFAULT_TEMPLATES;
+    const customTemplates = MarkTemplates.getCustomTemplates();
 
-    // Aggiorna badge numerici contatori
+    // Aggiorna badge contatori
     const countAllEl = document.getElementById('count-all');
     const countOfficialEl = document.getElementById('count-official');
     const countCustomEl = document.getElementById('count-custom');
@@ -7452,7 +7772,7 @@ window.addEventListener("DOMContentLoaded", () => {
       filtered = allTemplates.filter(t => t.category === currentTemplateCategory);
     }
 
-    // Filtra template in base alla ricerca
+    // Filtra in base a ricerca
     if (currentTemplateSearch && currentTemplateSearch.trim()) {
       const q = currentTemplateSearch.toLowerCase().trim();
       filtered = filtered.filter(t => {
@@ -7470,7 +7790,12 @@ window.addEventListener("DOMContentLoaded", () => {
     if (filtered.length === 0) {
       templateCardsGrid.innerHTML = `
         <div class="template-cards-empty">
-          <div class="template-cards-empty-icon">🔍</div>
+          <div class="template-cards-empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
           <div>${i18n.t('template_no_results') || 'Nessun template trovato'}</div>
         </div>
       `;
@@ -7479,22 +7804,21 @@ window.addEventListener("DOMContentLoaded", () => {
 
     templateCardsGrid.innerHTML = filtered.map(t => {
       const isCustom = !!t.isCustom;
-      const badgeText = isCustom ? (i18n.t('template_my_templates') || 'Mio Template') : (i18n.t('template_official') || 'Ufficiale');
-      const badgeClass = isCustom ? 'custom' : 'official';
+      const customBadge = isCustom ? `<span class="template-badge-pill custom">${escapeHtml(i18n.t('template_my_templates') || 'Custom')}</span>` : '';
 
       return `
         <div class="template-card" data-template-id="${escapeHtml(t.id)}">
-          <div class="template-card-top">
-            <div class="template-card-icon-badge">${t.icon || '📄'}</div>
-            <div class="template-card-headings">
-              <h4 class="template-card-title">${escapeHtml(t.title)}</h4>
-              <div class="template-card-pills">
-                <span class="template-badge-pill ${badgeClass}">${escapeHtml(badgeText)}</span>
-                <span class="template-category-pill">${escapeHtml(t.categoryLabel || t.category || '')}</span>
-              </div>
+          <div class="template-card-sheet-preview">
+            <div class="template-card-sheet">
+              ${generateMiniSheet(t)}
             </div>
           </div>
-          <div class="template-card-body">
+          <div class="template-card-content">
+            <div class="template-card-meta">
+              <span class="template-category-pill">${escapeHtml(t.categoryLabel || t.category || '')}</span>
+              ${customBadge}
+            </div>
+            <h4 class="template-card-title">${escapeHtml(t.title)}</h4>
             <p class="template-card-description">${escapeHtml(t.description || '')}</p>
           </div>
           <div class="template-card-footer">
@@ -7506,6 +7830,9 @@ window.addEventListener("DOMContentLoaded", () => {
               <span>${i18n.t('template_preview') || 'Anteprima'}</span>
             </button>
             ${isCustom ? `
+            <button type="button" class="template-card-btn-edit" data-action="edit-template" data-template-id="${escapeHtml(t.id)}">
+              Modifica
+            </button>
             <button type="button" class="template-card-btn-delete" data-action="delete-template" data-template-id="${escapeHtml(t.id)}" title="${i18n.t('template_delete') || 'Elimina'}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>` : ''}
@@ -7546,8 +7873,8 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function openTemplatePreview(templateId) {
-    if (!window.MarkTemplates || !templatePreviewDrawer) return;
-    const template = window.MarkTemplates.getTemplateById(templateId);
+    if (!MarkTemplates || !templatePreviewDrawer) return;
+    const template = MarkTemplates.getTemplateById(templateId);
     if (!template) return;
 
     activePreviewedTemplateId = templateId;
@@ -7563,13 +7890,32 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     setPreviewDrawerTab('rendered');
+    const savedWidth = localStorage.getItem('mark.templatePreviewWidth');
+    if (savedWidth && templatePreviewDrawer && !templatePreviewDrawer.classList.contains('expanded')) {
+      templatePreviewDrawer.style.width = `${savedWidth}px`;
+    }
     templatePreviewDrawer.classList.remove('hidden');
+    if (templatePreviewResizer) {
+      templatePreviewResizer.classList.remove('hidden');
+    }
   }
 
   function closeTemplatePreview() {
     activePreviewedTemplateId = null;
     if (templatePreviewDrawer) {
       templatePreviewDrawer.classList.add('hidden');
+      templatePreviewDrawer.classList.remove('expanded');
+    }
+    if (templatePreviewResizer) {
+      templatePreviewResizer.classList.add('hidden');
+    }
+    if (iconExpandPreview) {
+      iconExpandPreview.innerHTML = `
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <polyline points="9 21 3 21 3 15"></polyline>
+        <line x1="21" y1="3" x2="14" y2="10"></line>
+        <line x1="3" y1="21" x2="10" y2="14"></line>
+      `;
     }
   }
 
@@ -7581,9 +7927,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (previewSourceBody) previewSourceBody.classList.toggle('hidden', tab !== 'source');
   }
 
-  function applyTemplate(templateId) {
-    if (!window.MarkTemplates) return;
-    const template = window.MarkTemplates.getTemplateById(templateId);
+  async function applyTemplate(templateId) {
+    if (!MarkTemplates) return;
+    const template = MarkTemplates.getTemplateById(templateId);
     if (!template) return;
 
     closeTemplateGallery();
@@ -7621,23 +7967,21 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
     } else {
-      const choice = dialog.showMessageBoxSync({
-        type: 'question',
-        buttons: [
-          i18n.t('template_btn_new_tab') || 'Nuova scheda',
-          i18n.t('template_btn_replace') || 'Sostituisci',
-          i18n.t('dialog_cancel') || 'Annulla'
-        ],
-        defaultId: 0,
-        cancelId: 2,
+      const choice = await showCustomConfirmDialog({
         title: i18n.t('template_gallery_title') || 'Template',
-        message: i18n.t('template_replace_confirm') || 'Il file corrente contiene testo. Vuoi sostituire il contenuto o aprire in una nuova scheda?'
+        message: i18n.t('template_replace_confirm') || 'Il file corrente contiene testo. Vuoi sostituire il contenuto o aprire in una nuova scheda?',
+        icon: 'info',
+        buttons: [
+          { text: i18n.t('dialog_cancel') || 'Annulla', value: 'cancel', isCancel: true },
+          { text: i18n.t('template_btn_replace') || 'Sostituisci', value: 'replace', isDanger: true },
+          { text: i18n.t('template_btn_new_tab') || 'Nuova scheda', value: 'new-tab', isPrimary: true }
+        ]
       });
 
-      if (choice === 0) {
+      if (choice === 'new-tab') {
         createNewTab(template.suggestedFilename || template.title, template.content);
         showNotification((i18n.t('template_use_this') || 'Template applicato') + ': ' + template.title, 'success');
-      } else if (choice === 1) {
+      } else if (choice === 'replace') {
         if (editor) {
           isProgrammaticEdit = true;
           editor.value = template.content;
@@ -7664,23 +8008,22 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function handleDeleteTemplate(templateId) {
-    if (!window.MarkTemplates) return;
-    const template = window.MarkTemplates.getTemplateById(templateId);
+  async function handleDeleteTemplate(templateId) {
+    if (!MarkTemplates) return;
+    const template = MarkTemplates.getTemplateById(templateId);
     if (!template) return;
 
     const confirmMsg = i18n.t('template_delete_confirm', { name: template.title }) || `Eliminare il template "${template.title}"?`;
-    const res = dialog.showMessageBoxSync({
-      type: 'warning',
-      buttons: [i18n.t('dialog_cancel') || 'Annulla', i18n.t('template_delete') || 'Elimina'],
-      defaultId: 0,
-      cancelId: 0,
+    const confirmed = await showCustomConfirmDialog({
       title: i18n.t('template_delete') || 'Elimina Template',
-      message: confirmMsg
+      message: confirmMsg,
+      okText: i18n.t('template_delete') || 'Elimina',
+      cancelText: i18n.t('dialog_cancel') || 'Annulla',
+      isDanger: true
     });
 
-    if (res === 1) {
-      window.MarkTemplates.deleteCustomTemplate(templateId);
+    if (confirmed) {
+      MarkTemplates.deleteCustomTemplate(templateId);
       if (activePreviewedTemplateId === templateId) {
         closeTemplatePreview();
       }
@@ -7708,6 +8051,14 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const editBtn = e.target.closest('[data-action="edit-template"]');
+      if (editBtn) {
+        e.stopPropagation();
+        const id = editBtn.dataset.templateId;
+        if (id) openEditTemplateModal(id);
+        return;
+      }
+
       const deleteBtn = e.target.closest('[data-action="delete-template"]');
       if (deleteBtn) {
         e.stopPropagation();
@@ -7724,13 +8075,16 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Sidebar navigation in Gallery
-  templateNavBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const cat = btn.dataset.category;
-      if (cat) switchGalleryCategory(cat);
+  // Sidebar navigation in Gallery (Categories & Views)
+  const templateNavContainer = document.querySelector('.template-gallery-sidebar');
+  if (templateNavContainer) {
+    templateNavContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.template-nav-btn');
+      if (btn && btn.dataset.category) {
+        switchGalleryCategory(btn.dataset.category);
+      }
     });
-  });
+  }
 
   // Search input in Gallery
   if (templateSearchInput) {
@@ -7772,6 +8126,77 @@ window.addEventListener("DOMContentLoaded", () => {
   if (btnCloseTemplatePreview) {
     btnCloseTemplatePreview.addEventListener('click', closeTemplatePreview);
   }
+  if (btnToggleExpandPreview && templatePreviewDrawer) {
+    btnToggleExpandPreview.addEventListener('click', () => {
+      const isExpanded = templatePreviewDrawer.classList.toggle('expanded');
+      btnToggleExpandPreview.title = isExpanded ? 'Riduci anteprima' : 'Allarga anteprima';
+      if (iconExpandPreview) {
+        if (isExpanded) {
+          iconExpandPreview.innerHTML = `
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          `;
+        } else {
+          iconExpandPreview.innerHTML = `
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          `;
+        }
+      }
+    });
+  }
+
+  // Interactive Resizer for Preview Drawer
+  if (templatePreviewResizer && templatePreviewDrawer) {
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    templatePreviewResizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = templatePreviewDrawer.getBoundingClientRect().width;
+      templatePreviewDrawer.classList.remove('expanded');
+      templatePreviewDrawer.classList.add('resizing');
+      templatePreviewResizer.classList.add('is-resizing');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      // Since drawer is on the right, dragging left (negative dx) INCREASES drawer width
+      const dx = e.clientX - startX;
+      let newWidth = startWidth - dx;
+
+      const modalEl = document.querySelector('.template-gallery-modal-content');
+      const modalWidth = modalEl ? modalEl.getBoundingClientRect().width : window.innerWidth;
+      const minW = 340;
+      const maxW = Math.max(minW, modalWidth - 230);
+
+      newWidth = Math.max(minW, Math.min(newWidth, maxW));
+      templatePreviewDrawer.style.width = `${newWidth}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        templatePreviewDrawer.classList.remove('resizing');
+        templatePreviewResizer.classList.remove('is-resizing');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        const curWidth = parseInt(templatePreviewDrawer.style.width, 10);
+        if (curWidth && !isNaN(curWidth)) {
+          localStorage.setItem('mark.templatePreviewWidth', curWidth);
+        }
+      }
+    });
+  }
   if (btnPreviewRendered) {
     btnPreviewRendered.addEventListener('click', () => setPreviewDrawerTab('rendered'));
   }
@@ -7786,7 +8211,18 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Save Template Modal Handlers
+  // Save / Edit Template Modal Handlers
+  if (btnToggleNewCategory) {
+    btnToggleNewCategory.addEventListener('click', () => {
+      if (saveTemplateNewCategoryBox) {
+        saveTemplateNewCategoryBox.classList.toggle('hidden');
+        if (!saveTemplateNewCategoryBox.classList.contains('hidden') && saveTemplateNewCategoryInput) {
+          saveTemplateNewCategoryInput.focus();
+        }
+      }
+    });
+  }
+
   if (btnCloseSaveTemplate) {
     btnCloseSaveTemplate.addEventListener('click', closeSaveTemplateModal);
   }
@@ -7798,30 +8234,55 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   if (btnConfirmSaveTemplate) {
     btnConfirmSaveTemplate.addEventListener('click', () => {
+      if (!MarkTemplates) {
+        showNotification('Modulo template non disponibile', 'error');
+        return;
+      }
+
       const title = saveTemplateTitleInput ? saveTemplateTitleInput.value.trim() : '';
       if (!title) {
         showNotification('Inserisci un nome per il template', 'warning');
         if (saveTemplateTitleInput) saveTemplateTitleInput.focus();
         return;
       }
-      const category = saveTemplateCategorySelect ? saveTemplateCategorySelect.value : 'personal';
+
+      let category = saveTemplateCategorySelect ? saveTemplateCategorySelect.value : 'personal';
+      const newCatName = saveTemplateNewCategoryInput ? saveTemplateNewCategoryInput.value.trim() : '';
+      if (newCatName) {
+        const addedCat = MarkTemplates.addCategory(newCatName);
+        if (addedCat) category = addedCat.id;
+      }
+
       const description = saveTemplateDescInput ? saveTemplateDescInput.value.trim() : '';
-      const content = editor ? editor.value : '';
+      const editId = saveTemplateEditId ? saveTemplateEditId.value : '';
 
       try {
-        window.MarkTemplates.saveCustomTemplate({
-          title,
-          category,
-          description,
-          content
-        });
+        if (editId) {
+          // Modalità modifica
+          MarkTemplates.updateCustomTemplate(editId, {
+            title,
+            category,
+            description
+          });
+          showNotification('Template modificato con successo!', 'success');
+        } else {
+          // Modalità creazione
+          const content = editor ? editor.value : '';
+          MarkTemplates.saveCustomTemplate({
+            title,
+            category,
+            description,
+            content
+          });
+          showNotification(i18n.t('template_saved_success') || 'Template salvato con successo!', 'success');
+        }
         closeSaveTemplateModal();
-        showNotification(i18n.t('template_saved_success') || 'Template salvato con successo!', 'success');
+        renderSidebarCategories();
         if (templateGalleryModal && !templateGalleryModal.classList.contains('hidden')) {
           renderTemplateCards();
         }
       } catch (err) {
-        dialog.showErrorBox('Errore salvataggio template', err.message);
+        showNotification(err.message || 'Errore salvataggio template', 'error');
       }
     });
   }

@@ -92,6 +92,9 @@ ipcMain.on('window-maximize', () => {
 ipcMain.on('window-close', () => {
   if (win && !win.isDestroyed()) win.close();
 });
+ipcMain.on('window-close-confirmed', () => {
+  if (win && !win.isDestroyed()) win.destroy();
+});
 ipcMain.on('get-platform', (event) => {
   event.returnValue = process.platform;
 });
@@ -113,6 +116,7 @@ function createWindow() {
     height: 800,
     minWidth: 650,
     minHeight: 400,
+    backgroundColor: '#1f1f1f',
     icon: iconPath,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 15, y: 19 } }
@@ -242,6 +246,7 @@ function buildApplicationMenu() {
         },
         {
           label: i18n.t("menu_save_as_template"),
+          accelerator: "CmdOrCtrl+Shift+T",
           click: () => {
             win.webContents.send("save-as-template");
           }
@@ -302,6 +307,7 @@ function buildApplicationMenu() {
         { type: "separator" },
         {
           label: i18n.t("menu_choose_template"),
+          accelerator: "CmdOrCtrl+T",
           click: () => {
             win.webContents.send("choose-template");
           }
